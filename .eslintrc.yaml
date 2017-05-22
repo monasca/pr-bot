@@ -1,0 +1,31 @@
+---
+  extends:
+    - eslint:recommended
+    - plugin:import/errors
+    - plugin:import/warnings
+
+  parserOptions:
+    ecmaVersion: 6
+    sourceType: module
+    ecmaFeatures:
+      modules: true,
+      jsx: true
+
+  plugins:
+    - import
+
+  env:
+    node: true
+    es6: true
+
+  rules:
+    arrow-parens: 0
+    quote-props: 0
+    no-process-env: 0
+    no-console: 0
+
+    semi:
+      - 2
+
+    no-unused-vars:
+      - 2

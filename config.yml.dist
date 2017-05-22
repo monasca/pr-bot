@@ -1,0 +1,11 @@
+github:
+  token: b19307be49a989d484db562b5e9e59631059f04b
+
+git:
+  name: Monasca CI
+  email: monasca@lists.launchpad.net
+
+datastore:
+  type: gcloud
+  config:
+    projectId: monasca-ci-testing
