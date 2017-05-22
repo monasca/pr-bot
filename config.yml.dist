@@ -1,5 +1,5 @@
 github:
-  token: b19307be49a989d484db562b5e9e59631059f04b
+  token: some-github-token
 
 git:
   name: Monasca CI
