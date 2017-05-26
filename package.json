@@ -11,12 +11,14 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@google-cloud/datastore": "^1.0.2",
+    "fast-json-patch": "^1.1.10",
     "fs-extra": "^3.0.1",
     "github": "^9.2.0",
     "js-yaml": "^3.8.4",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
-    "shelljs": "^0.7.7"
+    "shelljs": "^0.7.7",
+    "uuid": "^3.0.1"
   },
   "devDependencies": {
     "eslint": "^3.19.0",
