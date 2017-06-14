@@ -57,7 +57,8 @@ to handle user requests to the REST API. It can be deployed by running:
 ```
 gcloud beta functions deploy bot \
     --stage-bucket my-bot-bucket \
-    --trigger-http
+    --trigger-http \
+    --memory 1024MB
 ```
 
 The second copy should be deployed using a randomized name and with webhooks
@@ -75,7 +76,8 @@ Then deploy the function using the randomized webhook name:
 ```
 gcloud beta functions deploy webhook_${id} \
     --stage-bucket my-pr-bot-webhook-bucket \
-    --trigger-http
+    --trigger-http \
+    --memory 1024MB
 ```
 
 The resulting webhook endpoint can be set in GitHub. The secret field can be set

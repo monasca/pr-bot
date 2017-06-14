@@ -27,6 +27,14 @@ const { HttpError } = require('./lib/api/common');
 //  }
 //}
 
+function wrap(func) {
+  try {
+    return Promise.resolve(func());
+  } catch (e) {
+    return Promise.reject(e);
+  }
+}
+
 function bot(req, res) {
   // once GCF can validate requests properly, we can combine the endpoints
   //handle(req, res)
@@ -42,7 +50,7 @@ function bot(req, res) {
   //      }
   //    });
 
-  rest.handle(req, res).then(response => {
+  wrap(() => rest.handle(req, res)).then(response => {
     res.status(200).send(response).end();
   }).catch(error => {
     if (error instanceof HttpError) {
@@ -55,7 +63,7 @@ function bot(req, res) {
 }
 
 function webhook_asdf1234(req, res) {
-  webhook.handle(req, res).then(response => {
+  wrap(() => webhook.handle(req, res)).then(response => {
     res.status(200).send(response).end();
   }).catch(error => {
     if (error instanceof HttpError) {
