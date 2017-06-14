@@ -1,11 +1,71 @@
+# a list of github api connection blocks
 github:
-  token: some-github-token
+  - domain: github.com # github domain for git remotes
 
+    # github api host
+    host: api.github.com
+
+    # personal access token w/ repo privs, used for API access (PRs) and pushing
+    # to personal fork
+    token: some-github-token
+
+    # shared secret for webhooks, e.g:
+    # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    # note that webhooks require the following events:
+    #  - push
+    #  - page_build
+    #  - pull_request, pull_request_review, pull_request_review_comment
+    # secrets must be different for each github client!
+    secret: some-shared-secret
+
+    # proxy to use for this github api connection (if any)
+    # defaults to environment vars
+    # proxy: http://some-http-proxy:8080
+
+# git client config
 git:
+  # overrides user.name if not already set
   name: Monasca CI
+
+  # overrides user.email if not already set
   email: monasca@lists.launchpad.net
 
+  # proxy to use for https push/pull
+  # proxy: http://some-http-proxy:8080
+
+# proxy to use when checking helm repositories for updates
+#helm:
+#  proxy: http://some-http-proxy:8080
+
+# backing db config
 datastore:
+  # database type, one of: gcloud, memory
   type: gcloud
+
+  # db engine specific config options
   config:
     projectId: monasca-ci-testing
+
+# memory db is appropriate for testing purposes
+#datastore:
+#  type: memory
+#  config:
+#    file: db.yml
+
+# list of tokens that can access the main REST API, e.g.
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+tokens:
+  - deadbeef
+
+# a list of hipchat endpoints
+# these can be associated with repositories using the room id 
+hipchat:
+  # a plain room URL with an access token, roomId = 1234
+  - https://hipchat.mydomain.com/v2/room/1234/notification?access_token=abcd1234xyz
+
+  # a dict-style URL with extra options
+  - url: https://hipchat.something.com/v2/room/5678/notification?access_token=asdf5678
+    proxy: http://some-proxy:8080/
+
+    # misc operational notifications can be sent to the default hipchat room
+    default: true
