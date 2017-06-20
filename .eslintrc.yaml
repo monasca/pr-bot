@@ -29,6 +29,9 @@ rules:
   no-unused-vars:
     - 2
 
+  no-warning-comments:
+    - 1
+
   import/no-unresolved:
     - 2
     - commonjs: true

@@ -68,7 +68,7 @@ enabled. Generate a random identifier and change the function name in
 ```
 id=$(< /dev/urandom tr -cd "a-zA-Z0-9" | head -c 32; echo)
 echo $id
-sed -i "s/webhook_asdf1234/${id}/g" index.js
+sed -i "s/webhook_asdf1234/webhook_${id}/g" index.js
 ```
 
 Then deploy the function using the randomized webhook name:

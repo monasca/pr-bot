@@ -1,5 +1,5 @@
 {
-  "name": "gcf_test_git",
+  "name": "pr-bot",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -17,7 +17,6 @@
     "js-yaml": "^3.8.4",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
-    "shelljs": "^0.7.7",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
