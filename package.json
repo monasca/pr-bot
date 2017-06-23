@@ -11,6 +11,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@google-cloud/datastore": "^1.0.2",
+    "docker-file-parser": "^1.0.2",
     "fast-json-patch": "^1.1.10",
     "fs-extra": "^3.0.1",
     "github": "^9.2.0",
