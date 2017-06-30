@@ -1,0 +1,46 @@
+{% set update = result.update %}
+{% set src = update.srcRepository %}
+{% set dest = update.destRepository %}
+
+{% set text %}
+An update to {{ src.name }}/{{ update.srcModule }} triggered an automatic update
+to {{ dest.name }}/{{ update.destModule }} (version {{ update.fromVersion }} -> 
+{{ update.toVersion }}).
+{% endset %}
+
+color: green
+notify: true
+message: >
+  {{ text | safe | indent(2) }}
+
+card:
+  id: "{{ result.id }}"
+  style: application
+  format: medium
+  title: "{{ result.title }}"
+{% if result.link %}
+  url: "{{ result.link }}"
+{% endif %}
+  description:
+    format: text
+    value: >
+      {{ text | safe | indent(6) }}
+  attributes:
+    - label: Module
+      value:
+        label: "{{ dest.name }}/{{ update.destModule }}"
+        url: "{{ dest.remote }}"
+    - label: Dependency
+      value:
+        label: "{{ src.name }}/{{ update.srcModule }}"
+        url: "{{ src.remote }}"
+    - label: Version
+      value:
+        label: "{{ update.toVersion }}"
+{% if result.pr %}
+    - label: PR
+      value:
+        label: "#{{ result.pr.number }}"
+        url: "{{ result.pr.html_url }}"
+{% endif %}
+  

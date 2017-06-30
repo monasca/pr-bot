@@ -1,0 +1,53 @@
+{% set text %}
+Commit status was marked as {{ payload.state }} in
+{{ payload.repository.full_name }}.
+
+Context: {{ payload.context }}
+{% endset %}
+
+{% set prRegex = r/pull request #(\d+)/ %}
+{% set prMatch = payload.commit.commit.message.match(prRegex) %}
+
+{% if payload.state === 'success' %}
+color: green
+{% else %}
+color: red
+{% endif %}
+
+notify: true
+message: >
+  {{ text | safe | indent(2) }}
+
+card:
+  id: "{{ payload.id.toString() }}"
+  style: application
+  format: medium
+  title: "{{ payload.description }}"
+{% if payload.target_url %}
+  url: "{{ payload.target_url }}"
+{% endif %}
+  description:
+    format: text
+    value: >
+      {{ text | safe | indent(6) }}
+  attributes:
+    - label: Commit
+      value:
+        label: "{{ payload.sha.substring(0, 8) }}"
+        url: "{{ payload.commit.html_url }}"
+    - label: State
+      value:
+        label: "{{ payload.state }}"
+        url: "{{ payload.target_url }}"
+        style: lozenge-{{ 'success' if state.style === 'success' else 'error' }}
+{% if payload.branches | length > 0 %}
+    - label: Branches
+      value:
+        label: "{{ payload.branches | join(', ', 'name') }}"
+{% endif %}
+{% if prMatch %}
+    - label: PR
+      value:
+        label: "#{{ prMatch[1] }}"
+        url: "{{ payload.repository.html_url }}/pull/{{ prMatch[1] }}"
+{% endif %}
