@@ -17,6 +17,7 @@
     "github": "^9.2.0",
     "js-yaml": "^3.8.4",
     "jsonpath": "^0.2.11",
+    "nedb": "^1.8.0",
     "nunjucks": "^3.0.1",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
