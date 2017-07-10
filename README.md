@@ -79,90 +79,18 @@ notifications delivered.
 Deployment
 ----------
 
-### Google Cloud Functions Emulator
+See the documentation for each deployment method:
+ * [Google Cloud Functions][3] - for public cloud deployments
+   * Designed to fit in free tier
+ * [Docker][4] - for public cloud or on-premise deployments
+   * Must be accessible to GitHub webhooks (public GitHub = public internet)
 
-The [GCF emulator][3] can be used to help in local testing. The 
-[datastore emulator][4] can also be used to test against a "real" database
-rather than the YAML-backed storage.
+For Docker deployments, the (combined) endpoint is `http://localhost:3000`. For
+Google Cloud Functions deployments, there are two endpoints: `/bot` for the REST
+API and `/webhook_...` for handling GitHub webhooks; the full addresses will be
+printed to the console during deployment.
 
-First, start the datastore emulator:
-```
-gcloud beta emulators datastore start --no-legacy --host-port 127.0.0.1:8080
-```
-
-Then, start the Cloud Functions emulator:
-```
-$(gcloud beta emulators datastore env-init)
-unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy
-./node_modules/.bin/functions start
-```
-
-Note that any proxies set in the current environment should be unset as the
-datastore library doesn't always honor `$NO_PROXY` properly and may be unable
-to connect to the local emulator. Proxies for resources that actually require
-them can be set for each component in `config.yml`.
-
-Lastly, deploy the function:
-```
-./node_modules/.bin/functions deploy bot --trigger-http
-```
-
-The last step can be repeated as desired to make changes to the running code or
-config file.
-
-Google Cloud Functions Setup
-----------------------------
-
-Due to limitations with GCF and securely handling webhooks, 2 copies of the
-function should be deployed.
-
-The first copy can be deployed using a normal name. This endpoint will be used
-to handle user requests to the REST API. It can be deployed by running:
-
-```
-gcloud beta functions deploy bot \
-    --stage-bucket my-bot-bucket \
-    --trigger-http \
-    --memory 2048MB
-```
-
-The second copy should be deployed using a randomized name and with webhooks
-enabled. Generate a random identifier and change the function name in
-`index.js`:
-
-```
-id=$(< /dev/urandom tr -cd "a-zA-Z0-9" | head -c 32; echo)
-echo $id
-sed -i "s/webhook_asdf1234/webhook_${id}/g" index.js
-```
-
-Then deploy the function using the randomized webhook name:
-
-```
-gcloud beta functions deploy webhook_${id} \
-    --stage-bucket my-pr-bot-webhook-bucket \
-    --trigger-http \
-    --memory 2048MB
-```
-
-The resulting webhook endpoint can be set in GitHub. The secret field can be set
-if desired, but is not currently validated due to limitations in GCF. The
-randomized webhook name should be kept secret and should only be used for GitHub
-webhooks.
-
-### Management
-
-Once deployed, two endpoints should be available: `/bot` and `/webhook_...`.
-
-#### Configure GitHub
-
-First, add the `/webhook_*` endpoint as a webhook to all GitHub repositories of
-interest and enable the following events: `push`, `page_build`, `status`,
-`pull_request`, `pull_request_review`, `pull_request_review_comment`. If
-everything is working, GitHub's initial `ping` event should return successfully
-(and should show a "hello world" response if inspected).
-
-#### Configure repositories via the API
+### Configure repositories via the API
 
 API examples use [HTTPie][5], this is the recommended method for working with
 the pr-bot API. The API is published at `/bot`. Once the function is deployed to
@@ -187,12 +115,12 @@ current project. Follow the URL in the error message to resolve the issue (it
 will try to ask you to create an entity, but the window can be closed at this
 step - the datastore will already be initialized).
 
-#### Add a Helm repository
+### Add a Helm repository
 
 The pr-bot needs to track the source repository as well as the 'downstream'
 repository containing published artifacts.
 
-
+First add the source repository:
 ```bash
 http post http://localhost:8010/monasca-ci-testing/us-central1/bot \
     token=deadbeef \
@@ -235,15 +163,14 @@ Note that Helm support has some limitations:
    repository subsetting is necessary for this to work well. In other words,
    don't add any of the official Google Helm repositories!
  
-#### Verify
+### Verify
 
 The state of the pr-bot can be inspected using `action=listRepositories` or
 `action=getRepository name=[repository name]`. All added repositories and
 detected modules should be shown.
 
-
 [1]: https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/
 [2]: https://blog.hipchat.com/2015/02/11/build-your-own-integration-with-hipchat/
-[3]: https://cloud.google.com/functions/docs/emulator
-[4]: https://cloud.google.com/datastore/docs/tools/datastore-emulator
+[3]: https://github.com/monasca/pr-bot/blob/master/docs/cloud-functions.md
+[4]: https://github.com/monasca/pr-bot/blob/master/docs/docker.md
 [5]: https://httpie.org/
