@@ -43,6 +43,7 @@ github:
   - domain: github.com
     host: api.github.com
     token: <NEW TOKEN HERE>
+    secret: <SHARED SECRET> # optional
 ```
 
 The `domain` should match the domain used in git remotes, while `host` refers to
@@ -50,6 +51,12 @@ the GitHub API host itself. A `pathPrefix` field can be optionally specified if
 the GitHub API is not on the root domain, as may be the case for GitHub
 Enterprise. If necessary, a `proxy` field can also be set to direct requests to
 that particular GitHub instance over some HTTP proxy.
+
+If using the webhook handler, a `secret` value can be generated using the above
+instructions for generating a random token. This value should be provided in the
+"Secret" field when creating the webhook in GitHub's UI. Note that secrets are
+currently verified only when using Docker deployments; an alternative
+authentication method is used when deploying to Google Cloud Functions.
 
 #### HipChat
 
