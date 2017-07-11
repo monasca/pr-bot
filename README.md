@@ -11,6 +11,66 @@ automatically carries version changes down the dependency tree. It files pull
 requests to the relevant GitHub repositories on your behalf and notifies you if
 and when your CI workflow validates the changes.
 
+Supported Repository and Module Types
+-------------------------------------
+
+The pr-bot reads module information for Docker and Helm artifacts, both in
+source and binary (packaged) forms. Automatic updates are supported according to
+this table:
+
+<table>
+  <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+      <th colspan="3" align="center">Destination</th>
+    </tr>
+    <tr>
+      <th></th>
+      <th>Type</th>
+      <th>Docker</th>
+      <th>Helm</th>
+      <th>Landscaper</th>
+    </tr>
+    <tr>
+      <th rowspan="3">Source</th>
+      <th>Docker</th>
+      <td><i>soon</i></td>
+      <td>yes, <code>values.yaml</code></td>
+      <td>n/a</td>
+    </tr>
+    <tr>
+      <th>Helm</th>
+      <td>n/a</td>
+      <td>yes, <code>requirements.yaml</code></td>
+      <td><i>soon</i></td>
+    </tr>
+    <tr>
+      <th>Landscaper</th>
+      <td>n/a</td>
+      <td>n/a</td>
+      <td>n/a</td>
+    </tr>
+  </tbody>
+</table>
+
+(support for additional module types coming soon, including Landscaper)
+
+The pr-bot aims to support development workflows resembling the following:
+ 1. Source for a Docker container `foo` is updated and pushed to GitHub
+ 2. CI/CD process pushes new container to Docker Hub, updates commit status in
+    GitHub
+ 3. Helm chart `bar` depends on container `foo`, and should be updated to the
+    latest version. A pull request that updates the required version is filed.
+ 4. A new version of Helm chart `bar` is released
+ 5. Helm chart `baz` depends on the other chart `bar` and should be updated to
+    use the new version. A pull request is made to apply the update.
+ 6. A Landscaper configuration depends on `baz` and should be updated to include
+    the new version. A pull request is made to apply the update.
+
+The pr-bot automates steps #3, #5, and #6. Ideally human interaction after step
+\#1 should be limited to approving pull requests once CI/CD passes.
+
 Configuration
 -------------
 
@@ -175,6 +235,53 @@ Note that Helm support has some limitations:
 The state of the pr-bot can be inspected using `action=listRepositories` or
 `action=getRepository name=[repository name]`. All added repositories and
 detected modules should be shown.
+
+Other API Actions
+-----------------
+
+Note that the following all point to the REST endpoint. For 
+
+### List repositories (`listRepositories`)
+
+Lists all added repositories and their modules. Example:
+
+Parameters: none
+
+```
+http post http://endpoint/ token=... action=listRepositories
+```
+
+### Get repository (`getRepository`)
+
+List metadata and modules for a particular repository.
+
+Parameters:
+ * `name`: the repository name
+
+### Get repository by remote (`getRepositoryByRemote`)
+
+Like `getRepository`, but fetches based on the `remote` rather than the `name`.
+Remote lookups use fuzzy comparison
+
+### List dependents (`listDependents`)
+
+List detected dependent modules for some module. In other words, "if I update
+this module, what pull requests will be made?"
+
+### Add repository (`addRepository`)
+
+Parameters:
+ * `name`
+ * `type`: the named repository type
+   * one of: `git`, `helm`, `dockerhub`
+ * `remote`
+ * `parent`: the name of the parent repository (optional)
+   * note: required for most webhook handlers for binary push events
+ * `room`: the HipChat room number to notify for updates (optional)
+
+### Remove repository (`removeRepository`)
+
+### Update repository (`softUpdateRepository`)
 
 [1]: https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/
 [2]: https://blog.hipchat.com/2015/02/11/build-your-own-integration-with-hipchat/
