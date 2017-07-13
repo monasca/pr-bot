@@ -17,6 +17,7 @@
     "fast-json-patch": "^1.1.10",
     "fs-extra": "^3.0.1",
     "github": "^9.2.0",
+    "glob": "^7.1.2",
     "js-yaml": "^3.8.4",
     "jsonpath": "^0.2.11",
     "nedb": "^1.8.0",
