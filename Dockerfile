@@ -4,7 +4,7 @@ COPY package.json index.js server.js /bot/
 COPY lib /bot/lib
 COPY templates /bot/templates
 
-RUN apk add --no-cache tini && cd /bot && yarn install --production
+RUN apk add --no-cache git tini && cd /bot && yarn install --production
 
 EXPOSE 3000
 
