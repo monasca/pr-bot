@@ -43,7 +43,7 @@ this table:
       <th>Helm</th>
       <td>n/a</td>
       <td>yes, <code>requirements.yaml</code></td>
-      <td><i>soon</i></td>
+      <td>yes</td>
     </tr>
     <tr>
       <th>Landscaper</th>
