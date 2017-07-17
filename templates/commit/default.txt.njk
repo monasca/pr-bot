@@ -1,0 +1,23 @@
+{#
+generates a valid git commit message for an Update
+
+note that commit messages should be well-formed (title line, empty line, body)
+to make sure the parsed output of this can be used in PR templates
+
+variables exposed:
+  - up: the settled Update instance
+#}
+{%- set ctitle -%}
+auto-update: {{ up.destModule }}/{{ up.srcModule }} to {{ up.toVersion }}
+{%- endset %}
+{%- set message -%}
+Dependency `{{ up.srcModule }}` from {{ up.srcRepository.type() }} repository
+{{ up.srcRepository.name }} was updated to version `{{ up.toVersion }}`.
+{%- endset %}
+{{ ctitle | truncate(72) }}
+
+{{ message | wrap(length=80) }}
+
+Source-Repository-Type: {{ up.srcRepository.type() }}
+Source-Repository: {{ up.srcRepository.remote }}
+Destination-Module: {{ up.destModule }}

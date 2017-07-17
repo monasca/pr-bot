@@ -1,0 +1,14 @@
+{#
+some additional parsing is done on the output of PR templates, since titles are
+technically a separate field:
+  - the first non-empty line is used as the PR title
+  - the first non-empty line after the title line begins the body
+
+variables exposed:
+  - commit: the parsed commit message as generated from the commit template
+            exposes fields: `title`, `body`, `raw`
+  - up: the settled Update instance
+#}
+{{ commit.title }}
+
+{{ commit.body }}
