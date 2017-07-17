@@ -49,7 +49,7 @@ app.post('/', (req, res) => {
   Promise.resolve(func(req, res)).then(response => {
     res.status(200).send(response).end();
   }).catch(err => {
-    handleError(err);
+    handleError(err, res);
   });
 });
 
