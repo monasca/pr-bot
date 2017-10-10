@@ -12,16 +12,20 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const path = require('path');
-const url = require('url');
+// @flow
 
-const nunjucks = require('nunjucks');
-const rp = require('request-promise-native');
-const yaml = require('js-yaml');
+import path from 'path';
+import url from 'url';
 
-const config = require('./config');
+import  nunjucks from 'nunjucks';
+import  rp from 'request-promise-native';
+import  yaml from 'js-yaml';
 
-const { ExtendableError } = require('./util');
+import * as config from './config';
+
+import { ExtendableError } from './util';
+
+import type { HipChatConfig } from './config';
 
 const TEMPLATE_DIRECTORY = path.resolve(__dirname, '../templates/hipchat');
 
@@ -35,14 +39,25 @@ function loadTemplate(name, env) {
   return yaml.safeLoad(rendered);
 }
 
-class HipChatError extends ExtendableError {
-  constructor(m) {
+export class HipChatError extends ExtendableError {
+  constructor(m: string) {
     super(m);
   }
 }
 
-class HipChatClient {
-  constructor(cfg) {
+export type HipChatMessage = {
+
+}
+
+export class HipChatClient {
+  url: string;
+  proxy: string | null;
+  default: boolean;
+  from: string | null;
+  roomId: string;
+  token: string;
+
+  constructor(cfg: HipChatConfig) {
     this.url = cfg.url;
     if (typeof cfg.proxy !== 'undefined') {
       this.proxy = cfg.proxy;
@@ -76,7 +91,7 @@ class HipChatClient {
     this.token = parts.query.auth_token;
   }
 
-  send(message) {
+  send(message: string | HipChatMessage) {
     console.log('sending message to room:', this.roomId);
 
     let body;
@@ -109,21 +124,20 @@ class HipChatClient {
     return rp(options);
   }
 
-  sendTemplate(templateName, env) {
+  sendTemplate(templateName: string, env) {
     const loaded = loadTemplate(templateName, env);
     console.log('loaded:', loaded);
     return this.send(loaded);
   }
 }
 
-let clients = null;
+let initialized = false;
+const clients: HipChatClient[]  = [];
 
 function init() {
-  if (clients !== null) {
+  if (initialized) {
     return clients;
   }
-
-  clients = [];
 
   const cfg = config.get();
   for (let entry of cfg.hipchat) {
@@ -137,10 +151,11 @@ function init() {
     clients.push(client);
   }
 
+  initialized = true;
   return clients;
 }
 
-function getDefault() {
+export function getDefault(): HipChatClient | null {
   const clients = init();
   for (let client of clients) {
     if (client.default) {
@@ -151,7 +166,7 @@ function getDefault() {
   return null;
 }
 
-function get(roomId) {
+export function get(roomId: string | number): HipChatClient | null {
   if (!roomId) {
     return getDefault();
   }
@@ -167,10 +182,3 @@ function get(roomId) {
 
   return null;
 }
-
-module.exports = {
-  HipChatClient,
-  HipChatError,
-  get,
-  getDefault
-};

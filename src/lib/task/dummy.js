@@ -12,15 +12,20 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const { TaskError, Task } = require('./task');
+// @flow
 
-class DummyTask extends Task {
-  constructor(options = {}) {
+import Task, { TaskError } from './task';
+
+import type { TaskOptions } from './task';
+
+export default class DummyTask extends Task {
+  constructor(options: TaskOptions) {
     super(options);
   }
 
-  execute() {
-    const { delay, fail } = this.data;
+  execute(): Promise<mixed> {
+    let delay: number = (this.data.delay: any);
+    let fail: boolean = (this.data.fail: any);
 
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -33,5 +38,3 @@ class DummyTask extends Task {
     });
   }
 }
-
-module.exports = { DummyTask };

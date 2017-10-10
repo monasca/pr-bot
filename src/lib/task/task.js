@@ -12,18 +12,44 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const uuid = require('uuid/v4');
+// @flow
 
-const { ExtendableError } = require('../util');
+import uuid from 'uuid/v4';
 
-class TaskError extends ExtendableError {
-  constructor(m) {
+import { ExtendableError } from '../util';
+
+export class TaskError extends ExtendableError {
+  constructor(m: string) {
     super(m);
   }
 }
 
-class Task {
-  constructor(options = {}) {
+export type TaskOptions = {
+  id?: string,
+  previousId?: string,
+  type: string,
+  data?: { [string]: mixed },
+  status?: string,
+  result?: mixed,
+  retries?: number,
+  createdAt?: number,
+  startedAt?: number,
+  endedAt?: number
+};
+
+export default class Task {
+  _id: string;
+  previousId: string | null;
+  type: string;
+  data: { [string]: mixed };
+  status: string;
+  result: mixed;
+  retries: number;
+  createdAt: number;
+  startedAt: number | null;
+  endedAt: number | null;
+
+  constructor(options: TaskOptions) {
     this._id = options.id || uuid();
     this.previousId = options.previousId || null;
     this.type = options.type;
@@ -36,15 +62,15 @@ class Task {
     this.endedAt = options.endedAt || null;
   }
 
-  load() {
+  load(): Promise<any> {
     return Promise.resolve();
   }
 
-  execute(data) { // eslint-disable-line no-unused-vars
+  execute(data: any): Promise<mixed> { // eslint-disable-line no-unused-vars
     throw new TaskError('execute() not implemented');
   }
 
-  retry() {
+  retry(): Task | null {
     if (this.retries <= 0) {
       return null;
     }
@@ -56,7 +82,7 @@ class Task {
     return Task.load(clone);
   }
 
-  static kind() {
+  static kind(): string {
     return 'Task';
   }
 
@@ -92,5 +118,3 @@ class Task {
     return require('./index').create(data);
   }
 }
-
-module.exports = { TaskError, Task };

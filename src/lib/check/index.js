@@ -21,7 +21,7 @@ import HelmGitCheckPlugin from './helm-git';
 import LandscaperGitCheckPlugin from './landscaper-git';
 
 import type CheckPlugin from './checkplugin';
-import type Repository from '../repository/repository';
+import type Repository, { IntermediateModule } from '../repository/repository';
 
 let initialized: boolean = false;
 let plugins: CheckPlugin<any>[] = [];
@@ -61,35 +61,13 @@ export async function resolve(repository: Repository, moduleName: string) {
       continue;
     }
 
-    return plugin.matches(repository, moduleName).then(match => {
-      if (match) {
-        return plugin;
-      } else {
-        return null;
-      }
-    });
+    let match = await plugin.matches(repository, moduleName);
+    if (match) {
+      return plugin.type().repository;
+    }
   }
 
-  return Promise.all(plugins.map(plugin => {
-    if (plugin.type().repository !== repository.type()) {
-      return null;
-    }
-
-    return plugin.matches(repository, moduleName).then(match => {
-      if (match) {
-        return plugin;
-      } else {
-        return null;
-      }
-    });
-  })).then(matches => {
-    const match = matches.find(m => m !== null);
-    if (match) {
-      return match.type().module;
-    } else {
-      return null;
-    }
-  });
+  return null;
 }
 
 /**
@@ -101,23 +79,18 @@ export async function resolve(repository: Repository, moduleName: string) {
  * @returns {Promise<object>} a list of { name, type } objects for each detected
  *                            module
  */
-export function scan(repository, localPath) {
+export async function scan(
+      repository: Repository,
+      localPath: string): Promise<IntermediateModule[]> {
   if (!initialized) {
     init();
   }
 
-  return Promise.all(plugins.map(plugin => {
-    return plugin.scan(repository, localPath).then(ret => {
-      return ret;
-    });
-  })).then(moduleLists => {
-    return moduleLists.reduce((acc, cur) => acc.concat(cur), []);
-  });
+  let modules: IntermediateModule[] = [];
+  for (let plugin of plugins) {
+    let result: IntermediateModule[] = await plugin.scan(repository, localPath);
+    modules.push(...result);
+  }
+
+  return modules;
 }
-
-module.exports = {
-  get,
-  resolve,
-  scan
-};
-

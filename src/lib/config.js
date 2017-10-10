@@ -42,10 +42,11 @@ export type DatastoreConfig = {
   config: { [string]: mixed }
 };
 
-export type HipChatConfig = string | {
+export type HipChatConfig = {
   url: string,
   proxy?: string,
-  default?: boolean
+  default?: boolean,
+  from?: string
 };
 
 export type Config = {
@@ -54,6 +55,7 @@ export type Config = {
   helm?: HelmConfig,
   datastore: DatastoreConfig,
   tokens: string[],
+  hipchat: (string | HipChatConfig)[]
 };
 
 let instance: ?Config = null;

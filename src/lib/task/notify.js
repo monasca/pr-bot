@@ -12,37 +12,48 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const hipchat = require('../hipchat');
+// @flow
 
-const { Task } = require('./task');
+import * as hipchat from '../hipchat';
 
-class NotifyTask extends Task {
-  constructor(options = {}) {
-    super(Object.assign({
+import Task from './task';
+
+import type { HipChatClient } from '../hipchat';
+import type { TaskOptions } from './task';
+
+export default class NotifyTask extends Task {
+  constructor(options: TaskOptions) {
+    super({
       type: 'notify',
-      retries: 3
-    }, options));
+      retries: 3,
+      ...options
+    });
   }
 
-  execute() {
-    const { room, template, env } = this.data;
+  execute(): Promise<mixed> {
+    const room: string = (this.data.room: any);
+    const template: string = (this.data.template: any);
+    const env: { [string]: mixed } = (this.data.env: any);
 
-    let instance;
+    let instance: HipChatClient;
     if (room) {
-      instance = hipchat.get(room);
-      if (!instance) {
+      let maybe = hipchat.get(room);
+      if (!maybe) {
         console.log(`room ${room} not configured, will not notify`);
         return Promise.resolve();
       }
+
+      instance = maybe;
     } else {
-      instance = hipchat.getDefault();
-      if (!instance) {
+      let maybe = hipchat.getDefault();
+      if (!maybe) {
         console.log('default room not configured, will not notify');
+        return Promise.resolve();
       }
+
+      instance = maybe;
     }
 
     return instance.sendTemplate(template, env);
   }
 }
-
-module.exports = { NotifyTask };

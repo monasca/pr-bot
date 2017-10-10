@@ -12,23 +12,33 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-let taskTypes = null;
+// @flow
+
+import type Task, { TaskOptions } from './task';
+
+let initialized: boolean = false;
+let taskTypes: Map<string, Class<Task>> = new Map();
 
 function init() {
   taskTypes = new Map();
   taskTypes.set('notify', require('./notify').NotifyTask);
   taskTypes.set('update-apply', require('./update-apply').UpdateApplyTask);
   taskTypes.set('update-check', require('./update-check').UpdateCheckTask);
-  taskTypes.set('dummy', require('./dummy').DummyTask);
+  taskTypes.set('dummy', require('./dummy').default);
+
+  initialized = true;
 }
 
-function create(data) {
-  if (!taskTypes) {
+export function create(data: TaskOptions) {
+  if (!initialized) {
     init();
   }
 
   const clazz = taskTypes.get(data.type);
+  if (!clazz) {
+    const TaskError = require('./task').TaskError;
+    throw new TaskError(`invalid task type: ${data.type}`);
+  }
+
   return new clazz(data);
 }
-
-module.exports = { create };
