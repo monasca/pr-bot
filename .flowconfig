@@ -1,0 +1,14 @@
+[ignore]
+.*/node_modules/*
+.*/build/.*
+.*/templates/.*
+
+[include]
+
+[libs]
+./defs.js
+
+[lints]
+
+[options]
+all=true
