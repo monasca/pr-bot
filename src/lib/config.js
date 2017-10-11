@@ -50,7 +50,7 @@ export type HipChatConfig = {
 };
 
 export type Config = {
-  github: GitHubConfig[],
+  github: GitHubConfig | GitHubConfig[],
   git: GitConfig,
   helm?: HelmConfig,
   datastore: DatastoreConfig,

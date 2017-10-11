@@ -12,15 +12,34 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const util = require('../util');
+// @flow
 
-class DatastoreError extends util.ExtendableError {
-  constructor(m) {
+import { ExtendableError } from '../util';
+
+export class DatastoreError extends ExtendableError {
+  constructor(m: string) {
     super(m);
   }
 }
 
-class DatastoreBackend {
+export type Filter = {
+  f: string,
+  op: string,
+  val: mixed
+};
+
+export interface Storable<T, U> {
+  id(): string | null;
+  dump(): T;
+
+  settle?: () => Promise<any>;
+  _meta?: any;
+
+  static kind(): string;
+  static load?: (T) => U;
+}
+
+export default class DatastoreBackend {
   constructor() {
 
   }
@@ -31,14 +50,14 @@ class DatastoreBackend {
   }
 
   // eslint-disable-next-line no-unused-vars
-  list(type, filters = []) {
+  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
     throw new DatastoreError('list not implemented');
   }
 
-  first(type, filters = []) {
+  first<T>(type: Class<T>, filters: Filter[] = []): Promise<T> {
     return this.list(type, filters).then(ents => {
       if (ents.length === 0) {
-        throw new DatastoreError('not matching entities found');
+        throw new DatastoreError('no matching entities found');
       }
 
       return ents[0];
@@ -46,22 +65,17 @@ class DatastoreBackend {
   }
 
   // eslint-disable-next-line no-unused-vars
-  get(type, key) {
+  get<T>(type: Class<T>, key: mixed): Promise<T> {
     throw new DatastoreError('get not implemented');
   }
 
   // eslint-disable-next-line no-unused-vars
-  store(object) {
+  store<T, U>(object: Storable<T, U>, settle: boolean = true): Promise<any> {
     throw new DatastoreError('store not implemented');
   }
 
   // eslint-disable-next-line no-unused-vars
-  delete(object) {
+  delete<T, U>(object: Storable<T, U>): Promise<any> {
     throw new DatastoreError('delete not implemented');
   }
 }
-
-module.exports = {
-  DatastoreError,
-  DatastoreBackend
-};

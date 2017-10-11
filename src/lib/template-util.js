@@ -22,12 +22,16 @@ import type Update from './update';
 
 const TEMPLATE_DIRECTORY = path.resolve(__dirname, '../templates');
 
+export type TemplateEnvironment = {
+  [string]: mixed
+};
+
 const nj = nunjucks.configure(TEMPLATE_DIRECTORY, {
   lstripBlocks: true,
   trimBlocks: true
 });
 
-function wrap(str: string, kwargs) {
+function wrap(str: string, kwargs: { length: number }) {
   const length = kwargs.length || 80;
 
   const tokens = str.split(/\s+/);
@@ -52,7 +56,7 @@ function wrap(str: string, kwargs) {
 
 nj.addFilter('wrap', wrap);
 
-export function render(partialPath: string, env: {[string]: mixed}): string {
+export function render(partialPath: string, env: TemplateEnvironment): string {
   return nj.render(partialPath, env);
 }
 

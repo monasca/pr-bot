@@ -12,17 +12,21 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const fs = require('fs');
+// @flow
 
-const uuid = require('uuid/v4');
-const yaml = require('js-yaml');
+import fs from 'fs';
 
-const config = require('../config');
+import uuid from 'uuid/v4';
+import yaml from 'js-yaml';
 
-const { DatastoreBackend } = require('./backend');
-const { Module } = require('../module');
-const { Repository } = require('../repository/repository');
-const { Update } = require('../update');
+import * as config from '../config';
+
+import DatastoreBackend, { DatastoreError } from './backend';
+import Module from '../module';
+import Repository from '../repository/repository';
+import Update from '../update';
+
+import type { Filter, Storable } from './backend';
 
 const TYPES = [ Module, Repository, Update ];
 
@@ -34,7 +38,10 @@ const OPERATORS = {
   '<=': (a, b) => b <= b
 };
 
-class MemoryDatastore extends DatastoreBackend {
+export default class MemoryDatastore extends DatastoreBackend {
+  datastore: Map<string, any>;
+  file: ?string;
+
   constructor() {
     super();
 
@@ -47,18 +54,21 @@ class MemoryDatastore extends DatastoreBackend {
       if (cfg.datastore.config.blob) {
         this.preload(cfg.datastore.config.blob);
       } else if (cfg.datastore.config.file) {
-        const content = fs.readFileSync(cfg.datastore.config.file);
+        const path = ((cfg.datastore.config.file: any): string);
+
+        const content = fs.readFileSync(path);
         const blob = yaml.safeLoad(content);
         this.preload(blob);
-        this.file = cfg.datastore.config.file;
+        this.file = path;
       }
     }
   }
 
-  _deserialize(type, id, entity) {
-    const data = Object.assign({}, entity, {
+  _deserialize<T>(type: Class<T>, id: mixed, entity: {}): T {
+    const data = {
+      ...entity,
       _meta: { id }
-    });
+    };
 
     if (typeof type.load === 'function') {
       return type.load(data);
@@ -67,7 +77,7 @@ class MemoryDatastore extends DatastoreBackend {
     }
   }
 
-  list(type, filters = []) {
+  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
     const typeMap = this.datastore.get(type.kind());
     
     let ids = Array.from(typeMap.keys());
@@ -84,7 +94,11 @@ class MemoryDatastore extends DatastoreBackend {
     return Promise.resolve(objects);
   }
 
-  get(type, id) {
+  get<T, U, V: Storable<T, U>>(type: Class<T>, id: mixed): Promise<T> {
+    if (typeof type.kind !== 'function') {
+      throw new DatastoreError(`invalid kind: ${type.name}`);
+    }
+
     const typeMap = this.datastore.get(type.kind());
     if (typeMap && typeMap.has(id)) {
       return Promise.resolve(this._deserialize(type, id, typeMap.get(id)));
@@ -93,14 +107,18 @@ class MemoryDatastore extends DatastoreBackend {
     }
   }
 
-  store(object, settle = true) {
+  store<T, U>(
+        object: Storable<T, U>,
+        settle: boolean = true): Promise<boolean> {
     if (settle && typeof object.settle === 'function') {
       return object.settle().then(o => this.store(o, false));
     }
 
     const kind = object.constructor.kind();
-    if (!this.datastore.has(kind)) {
-      this.datastore.set(kind, new Map());
+    let typeMap = this.datastore.get(kind);
+    if (!typeMap) {
+      typeMap = new Map();
+      this.datastore.set(kind, typeMap);
     }
 
     let id = object._meta.id;
@@ -108,14 +126,17 @@ class MemoryDatastore extends DatastoreBackend {
       id = object.id() || uuid();
     }
 
-    const typeMap = this.datastore.get(kind);
     typeMap.set(id, object.dump());
 
     return Promise.resolve(true);
   }
 
-  delete(object) {
+  delete<T, U>(object: Storable<T, U>): Promise<boolean> {
     const typeMap = this.datastore.get(object.constructor.kind());
+    if (!typeMap) {
+      throw new DatastoreError(`invalid kind: ${object.constructor.kind()}`);
+    }
+
     const id = object._meta.id || object.id();
     if (typeMap.has(id)) {
       typeMap.delete(id);
@@ -125,21 +146,21 @@ class MemoryDatastore extends DatastoreBackend {
     }
   }
 
-  preload(blob) {
+  preload(blob: any) {
     if (!blob) {
       return;
     }
 
     for (let type of TYPES) {
-      if (!this.datastore.has(type.kind())) {
-        this.datastore.set(type.kind(), new Map());
+      let typeMap = this.datastore.get(type.kind());
+      if (!typeMap) {
+        typeMap = new Map();
+        this.datastore.set(type.kind(), typeMap);
       }
 
       if (typeof blob[type.kind()] === 'undefined') {
         continue;
       }
-
-      const typeMap = this.datastore.get(type.kind());
 
       const entities = blob[type.kind()];
       for (let id of Object.keys(entities)) {
@@ -166,7 +187,3 @@ class MemoryDatastore extends DatastoreBackend {
     }
   }
 }
-
-module.exports = {
-  MemoryDatastore
-};

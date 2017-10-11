@@ -16,6 +16,10 @@
 
 import { ExtendableError } from '../util';
 
+export type Request = {
+  
+}
+
 export class HttpError extends ExtendableError {
   code: number;
 

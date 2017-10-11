@@ -12,13 +12,20 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const crypto = require('crypto');
+// @flow
 
-const config = require('../config');
-const functions = require('../functions');
-const hipchat = require('../hipchat');
+import crypto from 'crypto';
 
-const { HttpError } = require('./common');
+import * as config from '../config';
+import functions from '../functions';
+import * as hipchat from '../hipchat';
+
+import { HttpError } from './common';
+
+import type { $Request, $Response } from 'express';
+
+import type Repository from '../repository/repository';
+import type { TemplateEnvironment } from '../template-util';
 
 /**
  * Finds the configured GitHub block that verifies against this request's
@@ -27,7 +34,7 @@ const { HttpError } = require('./common');
  * @param {object} res the response object
  * @param {object} buf a Buffer containing the original request contents
  */
-function verifySecret(req, res, buf) {
+export function verifySecret(req: $Request, res: $Response, buf: Buffer) {
   const sig = req.get('X-Hub-Signature');
   if (!sig) {
     return;
@@ -42,11 +49,11 @@ function verifySecret(req, res, buf) {
   }
 
   for (let gh of githubs) {
-    if (typeof gh.secret === 'undefined') {
+    const secret = gh.secret;
+    if (!secret) {
       continue;
     }
-
-    const digest = crypto.createHmac('sha1', gh.secret)
+    const digest = crypto.createHmac('sha1', secret)
         .update(buf)
         .digest('hex');
 
@@ -59,13 +66,16 @@ function verifySecret(req, res, buf) {
   throw new HttpError('unauthorized', 401);
 }
 
-function safeNotify(template, env, repo) {
+function safeNotify(
+      template: string,
+      env: TemplateEnvironment,
+      repo: Repository) {
   return repo.notifyTemplate(template, env).catch(err => {
     console.log('error sending notification: ', err);
   });
 }
 
-function safeNotifyError(message, repo = null) {
+function safeNotifyError(message: string, repo: ?Repository = null) {
   console.log('safeNotifyError for repo', repo);
 
   let promise;
@@ -85,7 +95,7 @@ function safeNotifyError(message, repo = null) {
   });
 }
 
-function performSoftUpdate(repo) {
+function performSoftUpdate(repo: Repository) {
   console.log('updating repository: ', repo.name);
 
   return functions.softUpdateRepository(repo.name).then(ret => {
@@ -117,19 +127,21 @@ function performSoftUpdate(repo) {
   });
 }
 
-function handlePing() {
-  return Promise.resolve("hello world");
+function handlePing(req: $Request): Promise<string> {
+  return Promise.resolve('hello world');
 }
 
-function handlePush(req) {
+function handlePush(req: $Request): Promise<void> {
   // this may only be necessary if we want to support direct dependencies on
   // git repos at some point
   // right now we only depend on indirect artifacts e.g. github-pages, builds
   // uploaded to dockerhub, etc
   console.log('handlePush()');
+
+  return Promise.resolve();
 }
 
-function handleStatus(req) {
+function handleStatus(req: $Request): Promise<any> {
   const parentRemote = req.body.repository.html_url;
   return functions.getRepositoryByRemote(parentRemote).then(parent => {
     if (req.body.state === 'pending') {
@@ -174,7 +186,7 @@ function handleStatus(req) {
   // like travis ci (docker hub publishing from monasca-docker)
 }
 
-function handlePageBuild(req) {
+function handlePageBuild(req: $Request): Promise<any> {
   // page builds are supported for helm repositories, but incidentally come from
   // git-type repositories
   // we can support this relationship by assuming the git repository that
@@ -197,21 +209,26 @@ function handlePageBuild(req) {
       });
 }
 
-function handlePullRequest(req) {
+function handlePullRequest(req: $Request): Promise<void> {
   // TODO: maybe self-close PRs if another user posts a PR that manually
   // updates?
   console.log('handlePullRequest()');
+
+  return Promise.resolve();
 }
 
-function handlePullRequestReview(req) {
+function handlePullRequestReview(req: $Request): Promise<void> {
   console.log('handlePullRequestReview()');
+
+  return Promise.resolve();
 }
 
-function handlePullRequestReviewComment(req) {
+function handlePullRequestReviewComment(req: $Request): Promise<void> {
   console.log('handlePullRequestReviewComment()');
+  return Promise.resolve();
 }
 
-const handlers = {
+const handlers: { [string]: (req: $Request) => Promise<any> } = {
   'ping': handlePing,
   'push': handlePush,
   'status': handleStatus,
@@ -221,7 +238,7 @@ const handlers = {
   'pull_request_review_comment': handlePullRequestReviewComment,
 };
 
-function handle(req, res) {
+export function handle(req: $Request, res: $Response) {
   if (req.get('content-type') !== 'application/json') {
     throw new HttpError('content-type must be application/json', 406);
   }
@@ -239,6 +256,10 @@ function handle(req, res) {
   console.log('event:', event);
   console.log('payload:', req.body);
 
+  if (!event) {
+    throw new HttpError('an event type is required', 400);
+  }
+
   const handler = handlers[event];
   if (!handler) {
     throw new HttpError('invalid event type: ' + event, 400);
@@ -246,5 +267,3 @@ function handle(req, res) {
 
   return handler(req);
 }
-
-module.exports = { handle, verifySecret };

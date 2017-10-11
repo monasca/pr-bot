@@ -12,38 +12,43 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const { DockerHubRepository } = require('./dockerhub');
-const { GitRepository } = require('./git');
-const { HelmRepository } = require('./helm');
+// @flow
 
-let repositoryTypes = null;
+import DockerHubRepository from './dockerhub';
+import GitRepository from './git';
+import HelmRepository from './helm';
+
+import type Repository, { RepositoryOptions } from './repository';
+
+let initialized: boolean = false;
+const repositoryTypes: Map<string, Class<Repository>> = new Map();
 
 function init() {
-  repositoryTypes = new Map();
   //repositoryTypes.set('docker', DockerRepository);
   repositoryTypes.set('dockerhub', DockerHubRepository);
   repositoryTypes.set('git', GitRepository);
   repositoryTypes.set('helm', HelmRepository);
+
+  initialized = true;
 }
 
-function get(type) {
-  if (!repositoryTypes) {
+export function get(type: string): ?Class<Repository> {
+  if (!initialized) {
     init();
   }
 
   return repositoryTypes.get(type);
 }
 
-function create(data) {
-  if (!repositoryTypes) {
+export function create(data: RepositoryOptions) {
+  if (!initialized) {
     init();
   }
 
   const clazz = repositoryTypes.get(data.type);
+  if (!clazz) {
+    throw new Error(`invalid repository type: ${data.type}`);
+  }
+
   return new clazz(data);
 }
-
-module.exports = {
-  get,
-  create
-};

@@ -26,6 +26,7 @@ export class RepositoryError extends ExtendableError {
 }
 
 export type RepositoryOptions = {
+  type: string,
   name: string,
   parent: ?string,
   remote: string,

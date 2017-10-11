@@ -12,10 +12,14 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const rest = require('./lib/api/rest');
-const webhook = require('./lib/api/webhook');
+// @flow
 
-const { HttpError } = require('./lib/api/common');
+import * as rest from './lib/api/rest';
+import * as webhook from './lib/api/webhook';
+
+import { HttpError } from './lib/api/common';
+
+import type { $Request, $Response } from 'express';
 
 // can use when GCF is able to validate requests properly
 //function handle(req, res) {
@@ -35,7 +39,7 @@ function wrap(func) {
   }
 }
 
-function bot(req, res) {
+export function bot(req: $Request, res: $Response) {
   // once GCF can validate requests properly, we can combine the endpoints
   //handle(req, res)
   //    .then(response => {
@@ -62,7 +66,7 @@ function bot(req, res) {
   });
 }
 
-function webhook_asdf1234(req, res) {
+export function webhook_asdf1234(req: $Request, res: $Response) {
   wrap(() => webhook.handle(req, res)).then(response => {
     res.status(200).send(response).end();
   }).catch(error => {
@@ -75,4 +79,5 @@ function webhook_asdf1234(req, res) {
   });
 }
 
-module.exports = { bot, webhook_asdf1234 };
+// TODO: determine if GCF can directly use babel's output with export syntax
+//module.exports = { bot, webhook_asdf1234 };

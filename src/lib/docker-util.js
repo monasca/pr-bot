@@ -16,7 +16,7 @@
 
 import rp from 'request-promise-native';
 
-import config from './config';
+import * as config from './config';
 
 import { ExtendableError } from './util';
 

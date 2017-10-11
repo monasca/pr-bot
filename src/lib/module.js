@@ -19,6 +19,7 @@ import jsonpatch from 'fast-json-patch';
 import * as check from './check';
 import { ExtendableError } from './util';
 
+import type { Storable } from './datastore/backend';
 import type Repository from './repository/repository';
 
 export class ModuleError extends ExtendableError {
@@ -57,9 +58,9 @@ export type ModuleUpdate = {
   patches: mixed[]
 };
 
-export default class Module {
+export default class Module implements Storable<ModuleOptions, Module> {
   repository: string;
-  name: string;
+  name: string; 
   type: string;
   alias: ?string;
   versions: string[];
@@ -145,8 +146,12 @@ export default class Module {
   async diffDependencies(): Promise<ModuleUpdate> {
     const repo = await this.loadRepository();
     const plugin = check.get(repo.type(), this.type);
-    const dependencies = plugin.dependencies(repo, this.name);
+    if (!plugin) {
+      throw new ModuleError('invalid check plugin request: '
+          + `repo=${repo.type()}, module=${this.type}`);
+    }
 
+    const dependencies = await plugin.dependencies(repo, this.name);
     const clone = this.dump();
     clone.dependencies = dependencies;
     return {
@@ -163,11 +168,11 @@ export default class Module {
     return 'Module';
   }
 
-  id(): ?string {
+  id(): string | null {
     return null;
   }
 
-  dump() {
+  dump(): ModuleOptions {
     return {
       name: this.name,
       type: this.type,
@@ -186,4 +191,5 @@ export default class Module {
 
     return ds.store(this);
   }
+
 }

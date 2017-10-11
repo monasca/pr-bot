@@ -20,11 +20,13 @@ import functions from '../functions';
 import { HttpError } from './common';
 import Repository from '../repository/repository';
 
+import type { $Request, $Response } from 'express';
+
 process.on('unhandledRejection', (reason) => {
   console.log('unhandled rejection!', reason.stack);
 });
 
-function verifyToken(req) {
+function verifyToken(req: $Request) {
   const cfg = config.get();
   if (!cfg.tokens.find(t => t === req.body.token)) {
     throw new HttpError('unauthorized', 401);
@@ -33,7 +35,7 @@ function verifyToken(req) {
   return Promise.resolve(req);
 }
 
-function doPost(req) {
+function doPost(req: $Request) {
   // GCF doesn't seem to allow JSON bodies for GET, and doesn't give us
   // PATH_INFO ... so we'll have to handle everything in POST
   // so maybe it's less REST and more "httpie friendly", but whatever
@@ -72,7 +74,7 @@ function sanitizeSingle(object) {
   }
 }
 
-function sanitizeIfNecessary(object) {
+function sanitizeIfNecessary(object: any): any {
   if (Array.isArray(object)) {
     return Promise.all(object.map(sanitizeSingle));
   } else {
@@ -80,7 +82,7 @@ function sanitizeIfNecessary(object) {
   }
 }
 
-export function handle(req, res) {
+export function handle(req: $Request, res: $Response): Promise<any> {
   if (req.get('content-type') !== 'application/json') {
     throw new HttpError('content-type must be application/json', 406);
   }

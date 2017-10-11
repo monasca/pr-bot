@@ -12,29 +12,34 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const datastore = require('../datastore');
-const queue = require('../queue');
+// @flow
 
-const { Task } = require('./task');
-const { Repository } = require('../repository/repository');
+import datastore from '../datastore';
+import queue from '../queue';
 
-class UpdateCheckTask extends Task {
-  constructor(options = {}) {
-    super(Object.assign({
+import Task from './task';
+import Repository from '../repository/repository';
+
+import type { TaskOptions } from './task';
+
+export default class UpdateCheckTask extends Task {
+  constructor(options: TaskOptions) {
+    super({
       type: 'update-check',
-      retries: 3
-    }, options));
+      retries: 3,
+      ...options
+    });
   }
 
-  load() {
+  load(): Promise<Repository> {
     const { repositoryName } = this.data;
     const ds = datastore.get();
 
     return ds.get(Repository, repositoryName).then(repo => repo.settle());
   }
 
-  execute(data) {
-    const { repo } = data;
+  execute(data: any): Promise<mixed> {
+    const repo = (data: Repository);
 
     // apply module updates first else we won't pick up any changes until 
     // the next event
@@ -83,5 +88,3 @@ class UpdateCheckTask extends Task {
     });
   }
 }
-
-module.exports = { UpdateCheckTask };

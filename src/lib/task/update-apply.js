@@ -12,23 +12,34 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const datastore = require('../datastore');
-const mutation = require('../mutation');
-const queue = require('../queue');
+// @flow
 
-const { Task } = require('./task');
-const { Repository } = require('../repository/repository');
-const { Update } = require('../update');
+import datastore from '../datastore';
+import mutation from '../mutation';
+import queue from '../queue';
 
-class UpdateApplyTask extends Task {
-  constructor(options = {}) {
-    super(Object.assign({
+import Task from './task';
+import Repository from '../repository/repository';
+import Update from '../update';
+
+import type { TaskOptions } from './task';
+
+type UpdateApplyData = {
+  update: Update,
+  src: Repository,
+  dest: Repository
+};
+
+export default class UpdateApplyTask extends Task {
+  constructor(options: TaskOptions) {
+    super({
       type: 'update-apply',
-      retries: 3
-    }, options));
+      retries: 3,
+      ...options
+    });
   }
 
-  load() {
+  load(): Promise<UpdateApplyData> {
     const { updateId } = this.data;
     const ds = datastore.get();
 
@@ -45,11 +56,10 @@ class UpdateApplyTask extends Task {
     });
   }
 
-  execute(data) {
+  execute(data: UpdateApplyData): Promise<mixed> {
     const { update, src, dest } = data;
 
-    
+    // TODO!
+    return Promise.reject('TODO');
   }
 }
-
-module.exports = { UpdateApplyTask };

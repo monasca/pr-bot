@@ -26,6 +26,7 @@ import * as config from './config';
 import { ExtendableError } from './util';
 
 import type { HipChatConfig } from './config';
+import type { TemplateEnvironment } from './template-util';
 
 const TEMPLATE_DIRECTORY = path.resolve(__dirname, '../templates/hipchat');
 
@@ -46,8 +47,31 @@ export class HipChatError extends ExtendableError {
 }
 
 export type HipChatMessage = {
-
-}
+  from?: string,
+  message_format?: 'html' | 'text',
+  notify?: boolean,
+  color?: string,
+  message: string,
+  card?: {
+    id: string,
+    style: string,
+    description?: {
+      value: string,
+      format: 'html' | 'text'
+    },
+    format?: 'compact' | 'medium',
+    url?: string,
+    title: string,
+    activity?: {
+      html: string,
+      icon: { url: string, 'url@2x': string }
+    },
+    attributes?: {
+      value: { url?: string, style?: string, label: string },
+      label?: string
+    }[]
+  }
+};
 
 export class HipChatClient {
   url: string;
@@ -94,10 +118,10 @@ export class HipChatClient {
   send(message: string | HipChatMessage) {
     console.log('sending message to room:', this.roomId);
 
-    let body;
+    let body: HipChatMessage;
     if (typeof message === 'string') {
       body = {
-        message_format: "text",
+        message_format: 'text',
         message
       };
     } else {
@@ -124,7 +148,7 @@ export class HipChatClient {
     return rp(options);
   }
 
-  sendTemplate(templateName: string, env) {
+  sendTemplate(templateName: string, env: TemplateEnvironment) {
     const loaded = loadTemplate(templateName, env);
     console.log('loaded:', loaded);
     return this.send(loaded);

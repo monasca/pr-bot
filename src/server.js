@@ -12,20 +12,24 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const bodyParser = require('body-parser');
-const express = require('express');
+// @flow
 
-const rest = require('./lib/api/rest');
-const webhook = require('./lib/api/webhook');
+import bodyParser from 'body-parser';
+import express from 'express';
 
-const { HttpError } = require('./lib/api/common');
+import * as rest from './lib/api/rest';
+import * as webhook from './lib/api/webhook';
+
+import { HttpError } from './lib/api/common';
+
+import type { $Request, $Response, NextFunction } from 'express';
 
 const app = express();
 app.use(bodyParser.json({
   verify: webhook.verifySecret
 }));
 
-function handleError(err, res) {
+function handleError(err: Error, res: $Response) {
   if (err instanceof HttpError) {
     res.status(err.code).send(err.message).end();
   } else {
@@ -34,7 +38,7 @@ function handleError(err, res) {
   }
 }
 
-app.post('/', (req, res) => {
+app.post('/', (req: $Request, res: $Response) => {
   let func;
   if (typeof req.get('X-GitHub-Event') !== 'undefined') {
     if (typeof req.get('X-Hub-Signature') === 'undefined') {
@@ -53,7 +57,7 @@ app.post('/', (req, res) => {
   });
 });
 
-app.use((err, req, res, next) => {
+app.use((err: Error, req: $Request, res: $Response, next: NextFunction) => {
   if (res.headersSent) {
     return next(err);
   }

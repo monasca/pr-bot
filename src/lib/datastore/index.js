@@ -12,26 +12,29 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const config = require('../config');
+// @flow
 
-const { DatastoreError } = require('./backend');
+import * as config from '../config';
 
-let instance = null;
+import { DatastoreError } from './backend';
+import type DatastoreBackend from './backend';
 
-function createDatastore(type) {
+let instance: ?DatastoreBackend = null;
+
+function createDatastore(type: string): DatastoreBackend {
   // datastore implementations are require()'d dynamically to avoid any
   // circular dependency weirdness
   switch (type) {
     case 'gcloud': {
-      const { GoogleDatastore } = require('./google');
+      const GoogleDatastore = require('./google').default;
       return new GoogleDatastore();
     }
     case 'memory': {
-      const { MemoryDatastore } = require('./memory');
+      const MemoryDatastore = require('./memory').default;
       return new MemoryDatastore();
     }
     case 'nedb': {
-      const { NeDBDatastore } = require('./nedb');
+      const NeDBDatastore = require('./nedb').default;
       return new NeDBDatastore();
     }
     default: {
@@ -40,19 +43,17 @@ function createDatastore(type) {
   }
 }
 
-function init() {
+function init(): DatastoreBackend {
   const cfg = config.get();
   const datastore = createDatastore(cfg.datastore.type);
   datastore.init();
   return datastore;
 }
 
-module.exports = {
-  get: function() {
-    if (instance === null) {
-      instance = init();
-    }
-
-    return instance;
+export function get(): DatastoreBackend {
+  if (!instance) {
+    instance = init();
   }
-};
+
+  return instance;
+}
