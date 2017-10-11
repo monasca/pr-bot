@@ -6,7 +6,6 @@
 [include]
 
 [libs]
-./defs.js
 
 [lints]
 
