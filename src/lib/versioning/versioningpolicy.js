@@ -12,15 +12,15 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-class VersioningPolicy {
+// @flow
+
+export default class VersioningPolicy {
   constructor() {
 
   }
 
   // eslint-disable-next-line no-unused-vars
-  current(versions) {
+  current(versions: string[]): string {
     throw new Error('current() not implemented');
   }
 }
-
-module.exports = { VersioningPolicy };

@@ -132,8 +132,12 @@ export default class Module implements Storable<ModuleOptions, Module> {
   async diffVersions(): Promise<ModuleUpdate> {
     const repo = await this.loadRepository();
     const plugin = check.get(repo.type(), this.type);
-    const result = await plugin.check(repo, this.name);
+    if (!plugin) {
+      throw new ModuleError('invalid check plugin request: '
+          + `repo=${repo.type()}, module=${this.type}`);
+    }
 
+    const result = await plugin.check(repo, this.name);
     const clone = this.dump();
     clone.versions = result.versions;
     clone.current = result.current;

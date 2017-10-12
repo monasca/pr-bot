@@ -12,14 +12,19 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const path = require('path');
+// @flow
 
-const fs = require('fs-extra');
-const yaml = require('js-yaml');
+import path from 'path';
 
-const { MutationPlugin, MutationException } = require('./mutationplugin');
-const { helmRemoteEquals } = require('../repository/helm');
-const { renderCommitMessage } = require('../template-util');
+import fs from 'fs-extra';
+import yaml from 'js-yaml';
+
+import MutationPlugin, { MutationException } from './mutationplugin';
+import { helmRemoteEquals } from '../repository/helm';
+import { renderCommitMessage } from '../template-util';
+
+import type Repository from '../repository/repository';
+import type Update from '../update'
 
 function updateRequirements(repository, update, requirements) {
   for (let dep of requirements.dependencies) {
@@ -54,7 +59,7 @@ export default class HelmRequirementsMutationPlugin extends MutationPlugin {
     return { destRepository: 'git', srcModule: 'helm', destModule: 'helm' };
   }
 
-  apply(update) {
+  apply(update: Update) {
     const repository = update.destRepository;
 
     return repository.modulePath(update.destModule).then(modulePath => {

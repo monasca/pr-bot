@@ -12,16 +12,19 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const Datastore = require('@google-cloud/datastore');
+// @flow
 
-const config = require('../config');
+import Datastore from '@google-cloud/datastore';
 
-const {
-  DatastoreBackend,
-  DatastoreError
-} = require('./backend');
+import * as config from '../config';
 
-class GoogleDatastore extends DatastoreBackend {
+import DatastoreBackend, { DatastoreError} from './backend';
+
+import type { Filter, Storable } from './backend';
+
+export default class GoogleDatastore extends DatastoreBackend {
+  datastore: Datastore;
+  keyConstructor: any;
 
   constructor() {
     super();
@@ -39,19 +42,23 @@ class GoogleDatastore extends DatastoreBackend {
 
   }
 
-  _deserialize(type, entity) {
-    const data = Object.assign({}, entity, {
+  _deserialize<T>(type: Class<T>, entity: { [string]: mixed }) {
+    const data = {
+      ...entity,
       _meta: { id: entity[this.datastore.KEY] }
-    });
+    };
 
+    // $FlowFixMe: flow can't handle static interface properties
     if (typeof type.load === 'function') {
       return type.load(data);
     } else {
+      // $FlowFixMe: flow can't handle this
       return new type(data);
     }
   }
 
-  list(type, filters = []) {
+  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
+    // $FlowFixMe: this class gets insane to type properly
     let query = this.datastore.createQuery(type.name);
     for (let filter of filters) {
       query = query.filter(filter.f, filter.op, filter.val);
@@ -64,17 +71,20 @@ class GoogleDatastore extends DatastoreBackend {
         });
   }
 
-  get(type, id) {
-    let key;
+  get<T>(type: Class<T>, id: mixed): Promise<T> {
+    let key: any;
     if (id instanceof this.keyConstructor) {
       key = id;
     } else {
+      // $FlowFixMe: flow static interface methods
       key = this.datastore.key([type.kind(), id]);
     }
 
     return this.datastore.get(key).then(ent => {
       if (typeof ent[0] === 'undefined') {
         let msgKey = key.name || id;
+
+        // $FlowFixMe: just coerce to string
         throw new DatastoreError(`not found: kind=${key.kind} id=${msgKey}`);
       }
 
@@ -82,17 +92,19 @@ class GoogleDatastore extends DatastoreBackend {
     });
   }
 
-  store(object, settle = true) {
+  store<T, U>(object: Storable<T, U>, settle: boolean = true): Promise<any> {
     if (settle && typeof object.settle === 'function') {
       return object.settle().then(o => this.store(o, false));
     }
 
-    if (typeof object._meta === 'undefined') {
-      object._meta = {};
+    let meta = object._meta;
+    if (!meta) {
+      meta = {};
+      object._meta = meta;
     }
 
     let key;
-    if (typeof object._meta.id === 'undefined') {
+    if (typeof meta.id === 'undefined') {
       const id = object.id();
       const kind = object.constructor.kind();
 
@@ -102,31 +114,34 @@ class GoogleDatastore extends DatastoreBackend {
         key = this.datastore.key([kind]);
       }
       
-      object._meta.id = key;
+      meta.id = key;
     } else {
-      key = object._meta.id;
+      key = meta.id;
     }
     
     const data = object.dump();
     return this.datastore.save({ key, data });
   }
 
-  delete(object) {
+  delete<T, U>(object: Storable<T, U>): Promise<any> {
+    if (!object._meta) {
+      return Promise.reject(new DatastoreError('object requires _meta'));
+    }
+
     if (object._meta.id) {
       return this.datastore.delete(object._meta.id);
     } else {
+      // $FlowFixMe: flow doesn't understand static interface methods
       let kind = object.kind();
       let id = object.id();
       if (!id) {
-        return Promise.reject(new DatastoreError(
-          `object of kind ${object.kind()} does not have an id`));
+        // $FlowFixMe: flow doesn't understand static interface methods
+        const msg = `object of kind ${object.kind()} does not have an id`;
+        return Promise.reject(new DatastoreError(msg));
       }
 
       let key = this.datastore.key([kind, id]);
       return this.datastore.delete(key);
     }
   }
-
 }
-
-module.exports = { GoogleDatastore };

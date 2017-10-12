@@ -14,9 +14,9 @@
 
 // @flow
 
-import datastore from '../datastore';
-import mutation from '../mutation';
-import queue from '../queue';
+import * as datastore from '../datastore';
+import * as mutation from '../mutation';
+import * as queue from '../queue';
 
 import Task from './task';
 import Repository from '../repository/repository';

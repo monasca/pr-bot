@@ -12,18 +12,18 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const semver = require('semver');
+// @flow
 
-const { VersioningPolicy } = require('./versioningpolicy');
+import semver from 'semver';
 
-class SemanticVersioningPolicy extends VersioningPolicy {
+import VersioningPolicy from './versioningpolicy';
+
+export default class SemanticVersioningPolicy extends VersioningPolicy {
   constructor() {
     super();
   }
 
-  current(versions) {
+  current(versions: string[]): string {
     return versions.sort(semver.rcompare)[0];
   }
 }
-
-module.exports = { SemanticVersioningPolicy };

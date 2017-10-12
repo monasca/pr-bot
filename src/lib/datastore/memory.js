@@ -39,7 +39,7 @@ const OPERATORS = {
 };
 
 export default class MemoryDatastore extends DatastoreBackend {
-  datastore: Map<string, any>;
+  datastore: Map<string, Map<string, any>>;
   file: ?string;
 
   constructor() {
@@ -70,17 +70,21 @@ export default class MemoryDatastore extends DatastoreBackend {
       _meta: { id }
     };
 
+    // $FlowFixMe: flow can't handle static interface properties
     if (typeof type.load === 'function') {
       return type.load(data);
     } else {
+      // $FlowFixMe: flow can't handle this
       return new type(data);
     }
   }
 
   list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
-    const typeMap = this.datastore.get(type.kind());
+    // $FlowFixMe: static interface methods
+    const kind: string = type.kind();
+    const typeMap = this.datastore.get(kind);
     
-    let ids = Array.from(typeMap.keys());
+    let ids: string[] = Array.from(typeMap.keys());
     for (let filter of filters) {
       ids = ids.filter(id => {
         const ent = typeMap.get(id);
@@ -94,8 +98,11 @@ export default class MemoryDatastore extends DatastoreBackend {
     return Promise.resolve(objects);
   }
 
-  get<T, U, V: Storable<T, U>>(type: Class<T>, id: mixed): Promise<T> {
+  get<T>(type: Class<T>, id: mixed): Promise<T> {
+    // $FlowFixMe: static interface properties
+    // also constraining <T> to be a Storable is ... unpleasant
     if (typeof type.kind !== 'function') {
+      // $FlowFixMe: static interface properties
       throw new DatastoreError(`invalid kind: ${type.name}`);
     }
 

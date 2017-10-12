@@ -12,19 +12,19 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const { VersioningPolicy } = require('./versioningpolicy');
+// @flow
+
+import VersioningPolicy from './versioningpolicy';
 
 /**
  * A simple versioning policy that assumes versions[0] is the latest.
  */
-class SimpleVersioningPolicy extends VersioningPolicy {
+export default class SimpleVersioningPolicy extends VersioningPolicy {
   constructor() {
     super();
   }
 
-  current(versions) {
+  current(versions: string[]): string {
     return versions[0];
   }
 }
-
-module.exports = { SimpleVersioningPolicy };

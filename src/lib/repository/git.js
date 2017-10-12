@@ -19,7 +19,7 @@ import path from 'path';
 import url from 'url';
 import fs from 'fs-extra';
 
-import check from '../check';
+import * as check from '../check';
 import * as config from '../config';
 import * as github from '../github';
 
@@ -29,6 +29,7 @@ import Repository from './repository';
 
 import type GitHub from 'github';
 import type { ParsedURL } from '../util';
+import type { IntermediateModule } from './repository';
 
 const repoBase = '/tmp/git';
 
@@ -135,8 +136,20 @@ export function gitRemoteEquals(a: string, b: string) {
   return true;
 }
 
+export type GitRepositoryOptions = {
+  type: string,
+  name: string,
+  parent: ?string,
+  remote: string,
+  room: ?string,
+  modules: string[],
+  fork: ?string,
+  auth: string | false,
+  _meta: ?mixed
+};
+
 export default class GitRepository extends Repository {
-  fork: string;
+  fork: string | null;
   auth: string | false;
   modulesPromise: Promise<any> | null;
   localPath: string | null;
@@ -145,12 +158,12 @@ export default class GitRepository extends Repository {
   forkParts: ParsedURL;
   github: GitHub;
 
-  constructor(options = {}) {
+  constructor(options: GitRepositoryOptions) {
     super(options);
 
     // name of fork in github user for this github domain (e.g. github.com)
     // and configured token
-    this.fork = options.fork;
+    this.fork = options.fork || null;
 
     if (typeof options.auth === 'undefined') {
       this.auth = false;
@@ -222,22 +235,32 @@ export default class GitRepository extends Repository {
   }
 
   createPullRequest(title: string, body: mixed = null) {
+    const fork = this.fork;
+    if (!fork) {
+      throw new GitError('cannot create pull request with no fork', 'n/a');
+    }
+
+    const localBranch = this.localBranch;
+    if (!localBranch) {
+      throw new GitError('repository must be checked out', 'n/a');
+    }
+
     const remoteParts = url.parse(this.remote);
     if (!remoteParts.pathname) {
       throw new GitError('invalid remote', this.remote);
     }
     const [ owner, repo ] = remoteParts.pathname.substring(1).split('/');
 
-    const forkParts = url.parse(this.fork);
+    const forkParts = url.parse(fork);
     if (!forkParts.pathname) {
-      throw new GitError('invalid fork remote', this.fork);
+      throw new GitError('invalid fork remote', fork);
     }
     const [ forkOwner ] = forkParts.pathname.substring(1).split('/');
 
     const gh = github.get(remoteParts.hostname);
     const options = {
       owner, repo, title, body,
-      head: `${forkOwner}:${this.localBranch}`,
+      head: `${forkOwner}:${localBranch}`,
       base: 'master',
       maintainer_can_modify: true
     };
@@ -369,7 +392,7 @@ export default class GitRepository extends Repository {
     return path.join(lp, name);
   }
 
-  async loadModules(): Promise<void> {
+  async loadModules(): Promise<IntermediateModule[]> {
     const localPath = await this.clone();
 
     const promise = check.scan(this, localPath);

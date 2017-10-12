@@ -51,9 +51,7 @@ export function helmRemoteEquals(a: string, b: string): boolean {
   if (!pa.host || !pb.host) {
     throw new Error('');
   }
-
   
-
   if (pa.host.toLowerCase() !== pb.host.toLowerCase()) {
     return false;
   }
