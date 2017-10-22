@@ -40,6 +40,17 @@ export type HelmRepositoryIndex = {
   generated: string
 };
 
+export type HelmDependency = {
+  name: string,
+  version: string,
+  condition?: string,
+  repository: string
+};
+
+export type HelmRequirements = {
+  dependencies: HelmDependency[]
+};
+
 export function helmRemoteEquals(a: string, b: string): boolean {
   const pa = url.parse(a);
   const pb = url.parse(b);

@@ -42,7 +42,7 @@ export default class GoogleDatastore extends DatastoreBackend {
 
   }
 
-  _deserialize<T>(type: Class<T>, entity: { [string]: mixed }) {
+  _deserialize<T>(type: Class<T>, entity: { [string]: mixed }): T {
     const data = {
       ...entity,
       _meta: { id: entity[this.datastore.KEY] }

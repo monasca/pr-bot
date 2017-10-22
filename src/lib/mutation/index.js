@@ -21,13 +21,12 @@ import HelmValuesMutationPlugin from './helm-values';
 import LandscaperMutationPlugin from './landscaper';
 
 let initialized: boolean = false;
-let plugins: MutationPlugin[] = [];
+let plugins: MutationPlugin<any>[] = [];
 
 function init() {
   plugins.push(new HelmRequirementsMutationPlugin());
   plugins.push(new HelmValuesMutationPlugin());
   plugins.push(new LandscaperMutationPlugin());
-  plugins.push('a');
 
   initialized = true;
 }
@@ -35,7 +34,7 @@ function init() {
 export function get(
     destRepoType: string,
     srcModuleType: string,
-    destModuleType: string): ?MutationPlugin {
+    destModuleType: string): ?MutationPlugin<any> {
   if (!initialized) {
     init();
   }

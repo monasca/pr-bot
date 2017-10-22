@@ -12,12 +12,32 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const datastore = require('./datastore');
+// @flow
 
-const { Update } = require('./update');
+import * as datastore from './datastore';
 
-class PullRequest {
-  constructor(options = {}) {
+import Update from './update';
+
+import type { Storable } from './datastore/backend';
+
+export type PullRequestOptions = {
+  owner: string,
+  repo: string,
+  updateKey: ?mixed,
+  update?: Update<any>
+};
+
+export default class PullRequest
+      implements Storable<PullRequestOptions, PullRequest> {
+
+  owner: string;
+  repo: string;
+  updateKey: ?mixed;
+  update: Update<T> | null;
+  dsPromise: ?Promise<any>;
+  _meta: ?mixed;
+
+  constructor(options: PullRequestOptions) {
     this.owner = options.owner;
     this.repo = options.repo;
 
@@ -38,7 +58,7 @@ class PullRequest {
     this._meta = options._meta || {};
   }
 
-  applyUpdate(update) {
+  applyUpdate(update: Update<any>) {
     
   }
 
@@ -46,20 +66,19 @@ class PullRequest {
     return this.dsPromise;
   }
 
-  static kind() {
+  static kind(): string {
     return 'PullRequest';
   }
 
-  id() {
+  id(): string | null {
     return null;
   }
 
-  dump() {
+  dump(): PullRequestOptions {
     return {
       owner: this.owner,
       repo: this.repo,
-      updateKey: this.updateKey,
-
+      updateKey: this.updateKey
     };
   }
 
@@ -71,5 +90,3 @@ class PullRequest {
     return ds.store(this);
   }
 }
-
-module.exports = { PullRequest };

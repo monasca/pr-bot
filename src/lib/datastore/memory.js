@@ -83,6 +83,9 @@ export default class MemoryDatastore extends DatastoreBackend {
     // $FlowFixMe: static interface methods
     const kind: string = type.kind();
     const typeMap = this.datastore.get(kind);
+    if (!typeMap) {
+      throw new DatastoreError(`unknown type: ${kind}`);
+    }
     
     let ids: string[] = Array.from(typeMap.keys());
     for (let filter of filters) {
@@ -99,8 +102,9 @@ export default class MemoryDatastore extends DatastoreBackend {
   }
 
   get<T>(type: Class<T>, id: mixed): Promise<T> {
+    // constraining < T > to be a Storable is ... unpleasant
+
     // $FlowFixMe: static interface properties
-    // also constraining <T> to be a Storable is ... unpleasant
     if (typeof type.kind !== 'function') {
       // $FlowFixMe: static interface properties
       throw new DatastoreError(`invalid kind: ${type.name}`);
@@ -145,6 +149,11 @@ export default class MemoryDatastore extends DatastoreBackend {
     }
 
     const id = object._meta.id || object.id();
+    if (!id) {
+      // nothing to do
+      return Promise.resolve(false);
+    }
+
     if (typeMap.has(id)) {
       typeMap.delete(id);
       return Promise.resolve(true);

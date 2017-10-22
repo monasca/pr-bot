@@ -12,15 +12,19 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const fs = require('fs-extra');
-const path = require('path');
+// @flow
 
-const Datastore = require('nedb');
-const uuid = require('uuid');
+import fs from 'fs-extra';
+import path from 'path';
 
-const config = require('../config');
+import Datastore from 'nedb';
+import uuid from 'uuid';
 
-const { DatastoreBackend } = require('./backend');
+import * as config from '../config';
+
+import DatastoreBackend from './backend';
+
+import type { Filter, Storable } from './backend';
 
 const OPERATORS = {
   '=': value => value,
@@ -30,7 +34,10 @@ const OPERATORS = {
   '<=': value => ({ $lte: value })
 };
 
-class NeDBDatastore extends DatastoreBackend {
+export default class NeDBDatastore extends DatastoreBackend {
+  db: { [string]: Datastore };
+  dir: string | null;
+
   constructor() {
     super();
 
@@ -52,7 +59,8 @@ class NeDBDatastore extends DatastoreBackend {
 
   }
 
-  _db(type) {
+  _db<T>(type: Class<T>) {
+    // $FlowFixMe: static interface properties
     if (typeof type.kind === 'function') {
       type = type.kind();
     }
@@ -75,7 +83,7 @@ class NeDBDatastore extends DatastoreBackend {
     }
   }
 
-  _deserialize(type, doc) {
+  _deserialize<T>(type: Class<T>, doc: any): T {
     const data = Object.assign({}, doc, {
       _meta: { id: doc._id }
     });
@@ -87,7 +95,7 @@ class NeDBDatastore extends DatastoreBackend {
     }
   }
 
-  list(type, filters = []) {
+  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
     const query = {};
     for (let filter of filters) {
       query[filter.f] = OPERATORS[filter.op](filter.val);
@@ -105,7 +113,7 @@ class NeDBDatastore extends DatastoreBackend {
     });
   }
 
-  get(type, id) {
+  get<T>(type: Class<T>, id: mixed): Promise<T> {
     return new Promise((resolve, reject) => {
       this._db(type).findOne({ _id: id }, (err, doc) => {
         if (err) {
@@ -124,7 +132,9 @@ class NeDBDatastore extends DatastoreBackend {
     });
   }
 
-  store(object, settle = true) {
+  store<T, U>(
+        object: Storable<T, U>,
+        settle: boolean = true): Promise<any> {
     if (settle && typeof object.settle === 'function') {
       return object.settle().then(o => this.store(o, false));
     }
@@ -144,9 +154,10 @@ class NeDBDatastore extends DatastoreBackend {
       id = object._meta.id;
     }
 
-    const data = Object.assign(object.dump(), {
+    const data = {
+      ...object.dump(),
       _id: id
-    });
+    };
 
     return new Promise((resolve, reject) => {
       const kind = object.constructor.kind();
@@ -163,7 +174,7 @@ class NeDBDatastore extends DatastoreBackend {
     });
   }
 
-  delete(object) {
+  delete<T, U>(object: Storable<T, U>): Promise<any> {
     return new Promise((resolve, reject) => {
       const kind = object.constructor.kind();
       const id = object._meta.id || object.id();
@@ -178,5 +189,3 @@ class NeDBDatastore extends DatastoreBackend {
     });
   }
 }
-
-module.exports = { NeDBDatastore };

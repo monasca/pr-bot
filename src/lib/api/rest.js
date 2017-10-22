@@ -15,7 +15,7 @@
 // @flow
 
 import * as config from '../config';
-import functions from '../functions';
+import * as functions from '../functions';
 
 import { HttpError } from './common';
 import Repository from '../repository/repository';

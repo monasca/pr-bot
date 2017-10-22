@@ -12,14 +12,18 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const datastore = require('./datastore');
-const mutation = require('./mutation');
-const repository = require('./repository');
+// @flow
 
-const { ExtendableError } = require('./util');
-const { Module } = require('./module');
-const { Repository } = require('./repository/repository');
-const { Update } = require('./update');
+import * as datastore from './datastore';
+import * as mutation from './mutation';
+import * as repository from './repository';
+
+import { ExtendableError } from './util';
+import Module from './module';
+import Repository from './repository/repository';
+import Update from './update';
+
+import type { RepositoryOptions } from './repository/repository';
 
 class PRBotError extends ExtendableError {
   constructor(m) {
@@ -27,7 +31,14 @@ class PRBotError extends ExtendableError {
   }
 }
 
-function addRepository(options) {
+export type AddRepositoryOptions = {
+  name: string,
+  type: string,
+  remote: string,
+  parent: string | null
+};
+
+export function addRepository(options: RepositoryOptions): Promise<any> {
   const { name, type, remote, parent } = options;
 
   const clazz = repository.get(type);
@@ -62,20 +73,20 @@ function addRepository(options) {
   });
 }
 
-function sanitizeRepository(repo) {
+export function sanitizeRepository(repo: Repository) {
   return repo.settle().then(settled => ({
     repository: settled.dump(),
     modules: settled.modules.map(m => m.dump())
   }));
 }
 
-function getRepository(name) {
+export function getRepository(name: string): Promise<Repository> {
   const ds = datastore.get();
 
   return ds.get(Repository, name);
 }
 
-function removeRepository(name) {
+export function removeRepository(name: string): Promise<any> {
   const ds = datastore.get();
 
   return ds.get(Repository, name)
@@ -87,7 +98,7 @@ function removeRepository(name) {
       });
 }
 
-function listRepositories() {
+export function listRepositories(): Promise<Repository[]> {
   const ds = datastore.get();
 
   return ds.list(Repository).then(repos => {
@@ -95,7 +106,8 @@ function listRepositories() {
   });
 }
 
-function getRepositoryByRemote(remote) {
+export async function getRepositoryByRemote(
+      remote: string): Promise<?Repository> {
   const ds = datastore.get();
 
   return ds.list(Repository).then(repos => {
@@ -103,7 +115,8 @@ function getRepositoryByRemote(remote) {
   });
 }
 
-function getRepositoriesByParent(parentName) {
+export function getRepositoriesByParent(
+      parentName: string): Promise<Repository[]> {
   const ds = datastore.get();
 
   return ds.list(Repository, [
@@ -111,10 +124,12 @@ function getRepositoriesByParent(parentName) {
   ]);
 }
 
-function listDependents(repoName, moduleName) {
+export async function listDependents(
+      repoName: string,
+      moduleName: string): Promise<Module[]> {
   const ds = datastore.get();
 
-  let repoPromise;
+  let repoPromise: Promise<Repository>;
   if (repoName instanceof Repository) {
     repoPromise = Promise.resolve(repoName);
   } else {
@@ -125,47 +140,60 @@ function listDependents(repoName, moduleName) {
     moduleName = moduleName.name;
   }
 
-  return repoPromise.then(repo => repo.settle()).then(repo => {
-    const mod = repo.modules.find(m => m.name === moduleName);
-    if (!mod) {
-      throw new PRBotError(`Module not found: ${repoName} - ${moduleName}`);
-    }
+  const repo = await repoPromise;
+  await repo.settle();
 
-    return ds.list(Module).then(mods => {
-      return mods.filter(m => m.dependsOn(repo, mod));
-    });
-  });
+  const mod = repo.modules.find(m => m.name === moduleName);
+  if (!mod) {
+    throw new PRBotError(`Module not found: ${repoName} - ${moduleName}`);
+  }
+
+  const mods = await ds.list(Module);
+  return mods.filter(m => m.dependsOn(repo, mod));
 }
 
-function updateDependents(repo, moduleName, toVersion) {
-  const moduleType = repo.getModule(moduleName).type;
+export async function updateDependents(
+      repo: Repository,
+      moduleName: string,
+      toVersion: string): Promise<Update<any, any>[]> {
+  const mod = repo.getModule(moduleName);
+  if (!mod) {
+    throw new PRBotError(
+      `module not found: repo=${repo.name} module=${moduleName}`);
+  }
 
-  return listDependents(repo.name, moduleName).then(dependents => {
-    console.log('dependents:', dependents, repo.name, moduleName, moduleType);
-    const updates = [];
+  const moduleType = mod.type;
 
-    for (let dependent of dependents) {
-      const dependency = dependent.getDependency(moduleName, moduleType);
-      if (dependency.version === toVersion) {
-        continue;
-      }
+  const dependents: Module[] = await listDependents(repo.name, moduleName);
+  console.log('dependents:', dependents, repo.name, moduleName, moduleType);
 
-      const update = new Update({
-        srcRepository: repo.name,
-        srcModule: moduleName,
-        destRepository: dependent.repository,
-        destModule: dependent.name,
-        fromVersion: dependency.version,
-        toVersion: toVersion
-      });
-
-      console.log('update: ', update);
-
-      updates.push(update);
+  const updates = [];
+  for (let dependent of dependents) {
+    const dependency = dependent.getDependency(moduleName, moduleType);
+    if (!dependency) {
+      console.warn(`dependent lacks dependency, skipping: ${dependent.name}`);
+      continue;
     }
 
-    return updates;
-  });
+    if (dependency.version === toVersion) {
+      continue;
+    }
+
+    const update = new Update({
+      srcRepository: repo.name,
+      srcModule: moduleName,
+      destRepository: dependent.repository,
+      destModule: dependent.name,
+      fromVersion: dependency.version,
+      toVersion: toVersion,
+      _meta: {}
+    });
+
+    console.log('update: ', update);
+    updates.push(update);
+  }
+
+  return updates;
 }
 
 /**
@@ -178,10 +206,11 @@ function updateDependents(repo, moduleName, toVersion) {
  * 
  * @param {string} name 
  */
-function softUpdateRepository(name) {
+export async function softUpdateRepository(name: string): Promise<any> {
   const ds = datastore.get();
+  const repo = await ds.get(Repository, name);
 
-  return ds.get(Repository, name).then(repo => repo.settle()).then(repo => {
+  return repo.settle().then(repo => repo.settle()).then(repo => {
     // TODO: make sure newly added modules are handled correctly (or at all...)
 
     // changes in module dependencies don't result in any updates, but we still
@@ -262,19 +291,6 @@ function softUpdateRepository(name) {
 // soft update only tries to update dependents of modules that changed in that
 // event whereas hard update can affect modules that didn't change in this event
 
-function updateModule(repoName, moduleName) {
-  // TODO
-}
-
-module.exports = {
-  addRepository,
-  removeRepository,
-  listRepositories,
-  getRepository,
-  getRepositoryByRemote,
-  getRepositoriesByParent,
-  softUpdateRepository,
-  updateModule,
-  listDependents,
-  sanitizeRepository
-};
+//function updateModule(repoName, moduleName) {
+//  // TODO
+//}

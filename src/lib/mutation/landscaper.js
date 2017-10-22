@@ -22,6 +22,7 @@ import { renderCommitMessage } from '../template-util';
 
 import type Update from '../update';
 import type GitRepository from '../repository/git';
+import type { MutationPluginType, MutationResult } from './mutationplugin';
 
 function formatBranch(up) {
   const cleanVersion = up.toVersion.replace(/[^a-zA-Z0-9]/gi, '');
@@ -42,12 +43,12 @@ function updateLandscaper(repository, update, obj) {
   obj.release.chart = `${repo}/${name}:${update.toVersion}`;
 }
 
-export default class LandscaperMutationPlugin extends MutationPlugin {
+export default class LandscaperMutationPlugin extends MutationPlugin<GitRepository> {
   constructor() {
     super();
   }
 
-  type() {
+  type(): MutationPluginType {
     return {
       srcModule: 'helm',
       destRepository: 'git',
@@ -55,9 +56,12 @@ export default class LandscaperMutationPlugin extends MutationPlugin {
     };
   }
 
-  apply(update: Update) {
-    const repository = (update.destRepository: GitRepository);
+  apply(update: Update<GitRepository>): Promise<MutationResult<GitRepository>> {
+    if (!update.destRepository) {
+      throw new MutationException('dest repository is not ready');
+    }
 
+    const repository: GitRepository = update.destRepository;
     const realName = `${update.destModule}.yaml`;
     
     return repository.modulePath(realName).then(modulePath => {

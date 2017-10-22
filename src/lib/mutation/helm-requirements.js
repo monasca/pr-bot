@@ -23,72 +23,85 @@ import MutationPlugin, { MutationException } from './mutationplugin';
 import { helmRemoteEquals } from '../repository/helm';
 import { renderCommitMessage } from '../template-util';
 
-import type Repository from '../repository/repository';
-import type Update from '../update'
+import type GitRepository from '../repository/git';
+import type { HelmRequirements } from '../repository/helm';
+import type Update from '../update';
+import type { MutationPluginType, MutationResult } from './mutationplugin';
 
-function updateRequirements(repository, update, requirements) {
+function updateRequirements(
+      repository: GitRepository,
+      update: Update<GitRepository>,
+      requirements: HelmRequirements) {
+  const src = update.srcRepository;
+  if (!src) {
+    throw new MutationException('update was not fully loaded');
+  }
+
   for (let dep of requirements.dependencies) {
-    if (!helmRemoteEquals(dep.repository, update.srcRepository.remote)) {
+    if (!helmRemoteEquals(dep.repository, src.remote)) {
       continue;
     }
-
+    
     if (dep.name !== update.srcModule) {
       continue;
     }
 
-    dep.repository = update.srcRepository.remote;
+    dep.repository = src.remote;
     dep.version = update.toVersion;
     return;
   }
 
   throw new MutationException(
-    `No match found for ${update.srcRepository.remote}:${update.srcModule} in reqs`);
+    `No match found for ${src.remote}:${update.srcModule} in reqs`);
 }
 
-function formatBranch(up) {
+function formatBranch(up: Update<GitRepository>): string {
   const cleanVersion = up.toVersion.replace(/[^a-zA-Z0-9]/gi, '');
   return `up-${up.destModule}-${up.srcModule}-${cleanVersion}`;
 }
 
-export default class HelmRequirementsMutationPlugin extends MutationPlugin {
+export default class HelmRequirementsMutationPlugin 
+      extends MutationPlugin<GitRepository> {
+
   constructor() {
     super();
   }
 
-  type() {
+  type(): MutationPluginType {
     return { destRepository: 'git', srcModule: 'helm', destModule: 'helm' };
   }
 
-  apply(update: Update) {
+  async apply(update: Update<GitRepository>): Promise<MutationResult<GitRepository>> {
     const repository = update.destRepository;
+    if (!repository) {
+      throw new MutationException(
+        `destRepository not loaded: ${update.destRepositoryName}`);
+    }
 
-    return repository.modulePath(update.destModule).then(modulePath => {
-      return path.join(modulePath, 'requirements.yaml');
-    }).then(reqsPath => {
-      return fs.readFile(reqsPath).then(reqsStr => {
-        const reqs = yaml.safeLoad(reqsStr);
-        updateRequirements(repository, update, reqs);
-        return fs.writeFile(reqsPath, yaml.safeDump(reqs));
-      }).then(() => {
-        return repository.getOrCreateFork();
-      }).then(() => {
-        const commitMessage = renderCommitMessage(update);
-        // TODO: use renderPullRequest as well
+    const modulePath = await repository.modulePath(update.destModule);
+    const reqsPath = path.join(modulePath, 'requirements.yaml');
+    const reqsStr = await fs.readFile(reqsPath);
 
-        return repository.branch(formatBranch(update))
-            .then(() => repository.add(reqsPath))
-            .then(() => repository.commit(commitMessage))
-            .then(() => repository.push())
-            .then(() => repository.createPullRequest(commitMessage));
-      });
-    }).then(response => {
-      const pr = response.data;
-      return {
-        update, pr,
-        id: pr.head.sha,
-        link: pr.html_url,
-        title: pr.title
-      };
-    });
+    const reqs = yaml.safeLoad(reqsStr);
+    updateRequirements(repository, update, reqs);
+    await fs.writeFile(reqsPath, yaml.safeDump(reqs));
+
+    await repository.getOrCreateFork();
+
+    const commitMessage = renderCommitMessage(update);
+    await repository.branch(formatBranch(update));
+    await repository.add(reqsPath);
+    await repository.commit(commitMessage);
+    await repository.push();
+
+    const response = await repository.createPullRequest(commitMessage);
+
+    const pr = response.data;
+    return {
+      update, pr,
+      id: pr.head.sha,
+      link: pr.html_url,
+      title: pr.title
+    };
   }
 }

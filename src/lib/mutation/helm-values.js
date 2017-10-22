@@ -24,16 +24,28 @@ import { parseDockerTag, dockerTagToRemote } from '../docker-util';
 import { findDockerDependencies } from '../helm-util';
 import { renderCommitMessage } from '../template-util';
 
-import type Repository from '../repository/repository';
+import type GitRepository from '../repository/git';
 import type Update from '../update';
+import type { MutationPluginType, MutationResult } from './mutationplugin';
 
-function updateValues(repository: Repository, update: Update, values) {
+export type HelmValues = {
+  [string]: any
+};
+
+function updateValues(
+      repository: GitRepository,
+      update: Update<GitRepository>, values) {
+  const src = update.srcRepository;
+  if (!src) {
+    throw new MutationException('update was not fully loaded');
+  }
+
   for (let dep of findDockerDependencies(values)) {
     const fullTag = `${dep.value.repository}:${dep.value.tag}`;
     const parsed = parseDockerTag(fullTag);
 
     const remote = dockerTagToRemote(parsed);
-    if (!update.srcRepository.providesRemote(remote)) {
+    if (!src.providesRemote(remote)) {
       continue;
     }
 
@@ -46,20 +58,20 @@ function updateValues(repository: Repository, update: Update, values) {
   }
 
   throw new MutationException(
-    `No match found for ${update.srcRepository.remote}:${update.srcModule} in values`);
+    `No match found for ${src.remote}:${update.srcModule} in values`);
 }
 
-function formatBranch(up) {
+function formatBranch(up: Update<GitRepository>): string {
   const cleanVersion = up.toVersion.replace(/[^a-zA-Z0-9]/gi, '');
   return `up-${up.destModule}-${up.srcModule}-${cleanVersion}`;
 }
 
-class HelmValuesMutationPlugin extends MutationPlugin {
+export default class HelmValuesMutationPlugin extends MutationPlugin<GitRepository> {
   constructor() {
     super();
   }
 
-  type() {
+  type(): MutationPluginType {
     return {
       destRepository: 'git',
       destModule: 'helm',
@@ -67,46 +79,43 @@ class HelmValuesMutationPlugin extends MutationPlugin {
     };
   }
 
-  apply(update: Update) {
+  async apply(update: Update<GitRepository>): Promise<MutationResult<GitRepository>> {
     const repository = update.destRepository;
+    if (!repository) {
+      throw new MutationException(
+        `destRepository not loaded: ${update.destRepositoryName}`);
+    }
 
-    return repository.modulePath(update.destModule).then(modulePath => {
-      const valuesPath = path.join(modulePath, 'values.yaml');
+    const modulePath = await repository.modulePath(update.destModule);
+    const valuesPath = path.join(modulePath, 'values.yaml');
+    const content = fs.readFile(valuesPath, 'utf-8');
+
+    const parsed = new YAWN(content);
+
+    // copy the root object - yawn uses a setter on .json and won't detect
+    // changes to children (or self assignment)
+    const values = Object.assign({}, parsed.json);
+    updateValues(repository, update, values);
+
+    parsed.json = values;
+    await fs.writeFile(valuesPath, parsed.yaml, 'utf-8');
+    await repository.getOrCreateFork();
     
-      return fs.readFile(valuesPath, 'utf-8').then(content => {
-        const parsed = new YAWN(content);
+    const commitMessage = renderCommitMessage(update);
+    // TODO: use renderPullRequest as well
 
-        // copy the root object - yawn uses a setter on .json and won't detect
-        // changes to children (or self assignment)
-        const values = Object.assign({}, parsed.json);
-        updateValues(repository, update, values);
+    await repository.branch(formatBranch(update));
+    await repository.add(valuesPath);
+    await repository.commit(commitMessage);
+    await repository.push();
 
-        parsed.json = values;
-        return fs.writeFile(valuesPath, parsed.yaml, 'utf-8');
-      }).then(() => {
-        return repository.getOrCreateFork();
-      }).then(() => {
-        const commitMessage = renderCommitMessage(update);
-        // TODO: use renderPullRequest as well
-
-        return repository.branch(formatBranch(update))
-            .then(() => repository.add(valuesPath))
-            .then(() => repository.commit(commitMessage))
-            .then(() => repository.push())
-            .then(() => repository.createPullRequest(commitMessage));
-      });
-    }).then(response => {
-      const pr = response.data;
-      return {
-        update, pr,
-        id: pr.head.sha,
-        link: pr.html_url,
-        title: pr.title
-      };
-    });
+    const response = await repository.createPullRequest(commitMessage);
+    const pr = response.data;
+    return {
+      update, pr,
+      id: pr.head.sha,
+      link: pr.html_url,
+      title: pr.title
+    };
   }
 }
-
-module.exports = {
-  HelmValuesMutationPlugin
-};

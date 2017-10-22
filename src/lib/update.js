@@ -14,9 +14,11 @@
 
 // @flow
 
-import datastore from './datastore';
+import * as datastore from './datastore';
 
 import Repository from './repository/repository';
+
+import type { Storable } from './datastore/backend';
 
 type UpdateOptions = {
   srcRepository: string,
@@ -28,17 +30,19 @@ type UpdateOptions = {
   _meta: ?mixed
 };
 
-export default class Update {
+export default class Update<DestType: Repository>
+      implements Storable<UpdateOptions, Update<DestType>> {
+
   srcRepositoryName: string;
   srcRepository: ?Repository;
   destRepositoryName: string;
-  destRepository: ?Repository;
+  destRepository: ?DestType;
   srcModule: string;
   destModule: string;
   fromVersion: string;
   toVersion: string;
   _meta: ?mixed;
-  dsPromise: Promise<Update>;
+  dsPromise: Promise<Update<DestType>>;
 
   constructor(options: UpdateOptions) {
     this.srcRepositoryName = options.srcRepository;
@@ -73,7 +77,7 @@ export default class Update {
     return 'Update';
   }
 
-  id(): ?string {
+  id(): string | null {
     return null;
   }
 

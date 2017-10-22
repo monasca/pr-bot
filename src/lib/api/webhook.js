@@ -17,7 +17,7 @@
 import crypto from 'crypto';
 
 import * as config from '../config';
-import functions from '../functions';
+import * as functions from '../functions';
 import * as hipchat from '../hipchat';
 
 import { HttpError } from './common';
@@ -58,6 +58,7 @@ export function verifySecret(req: $Request, res: $Response, buf: Buffer) {
         .digest('hex');
 
     if (sig === `sha1=${digest}`) {
+      // $FlowFixMe: monkeypatching things a bit
       req.github = gh;
       return;
     }

@@ -16,11 +16,22 @@
 
 import { ExtendableError } from '../util';
 
-type MutationPluginType = {
+import type Repository from '../repository/repository';
+import type Update from '../update';
+
+export type MutationPluginType = {
   srcModule: string,
   destRepository: string,
   destModule: string
 };
+
+export type MutationResult<T: Repository> = {
+  update: Update<T>,
+  pr: mixed,
+  id: string,
+  link: string,
+  title: string
+}
 
 export class MutationException extends ExtendableError {
   constructor(m: string) {
@@ -28,7 +39,7 @@ export class MutationException extends ExtendableError {
   }
 }
 
-export default class MutationPlugin {
+export default class MutationPlugin<T: Repository> {
   constructor() {
 
   }
@@ -38,7 +49,7 @@ export default class MutationPlugin {
   }
 
   // eslint-disable-next-line no-unused-vars
-  apply(update): Promise {
+  apply(update: Update<T>): Promise<MutationResult<T>> {
     throw new MutationException('apply() not implemented');
   }
 }
