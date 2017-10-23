@@ -76,7 +76,7 @@ export function parseCommitMessage(message: string): CommitMessage {
   return { title, body, raw: message };
 }
 
-export function renderCommitMessage(update: Update) {
+export function renderCommitMessage(update: Update<any>) {
   // TODO support some overrides here, maybe based on dest module
   return render('commit/default.txt.njk', {
     up: update, update
@@ -88,7 +88,7 @@ export type RenderedPullRequest = {
   body: string
 };
 
-export function renderPullRequest(update: Update) {
+export function renderPullRequest(update: Update<any>) {
   const commit = parseCommitMessage(renderCommitMessage(update));
   const text = render('pr/default.md.njk', {
     commit, update, up: update

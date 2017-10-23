@@ -49,13 +49,19 @@ export type HipChatConfig = {
   from?: string
 };
 
+export type TaskQueueConfig = {
+  type: string,
+  config: { [string]: mixed }
+};
+
 export type Config = {
   github: GitHubConfig | GitHubConfig[],
   git: GitConfig,
   helm?: HelmConfig,
   datastore: DatastoreConfig,
   tokens: string[],
-  hipchat: (string | HipChatConfig)[]
+  hipchat: (string | HipChatConfig)[],
+  queue: TaskQueueConfig
 };
 
 let instance: ?Config = null;

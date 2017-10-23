@@ -16,6 +16,7 @@
 
 import child_process from 'child_process';
 import os from 'os';
+import url from 'url';
 
 // see also: http://stackoverflow.com/a/32749533
 export class ExtendableError extends Error {
@@ -53,10 +54,25 @@ export type SubprocessReturnValue = {
   stderr: string
 };
 
+export type SubprocessOptions = {
+  cwd?: string,
+  env?: { [string]: mixed },
+  shell?: boolean | string,
+  stdio?: string | string[],
+  uid?: number,
+  gid?: number,
+  maxBuffer?: number,
+  timeout?: number,
+  killSignal?: string | number,
+  encoding?: string,
+  detached?: boolean,
+  argv0?: string
+};
+
 export function spawn(
       command: string,
       args: string[],
-      options = {}): Promise<SubprocessReturnValue> {
+      options: SubprocessOptions = {}): Promise<SubprocessReturnValue> {
   options.maxBuffer = options.maxBuffer || 8 * 1024;
   options.stdio = options.stdio || 'inherit';
 
@@ -97,7 +113,7 @@ const execLogs: ExecLogEntry[] = [];
 
 export function exec(
       command: string,
-      options: {[string]: mixed} = {}): Promise<SubprocessReturnValue> {
+      options: SubprocessOptions = {}): Promise<SubprocessReturnValue> {
   options.maxBuffer = options.maxBuffer || 8 * 1024;
   options.stdio = options.stdio || 'inherit';
 
@@ -112,7 +128,8 @@ export function exec(
 
     execLogs.push(log);
 
-    child_process.exec(command, options, (error, stdout, stderr) => {
+    // $FlowFixMe: flow's built-in typedef is bad
+    child_process.exec(command, options, (error, stdout: string, stderr: string) => {
       let code: number;
       if (!error) {
         code = 0;
@@ -144,7 +161,10 @@ export function exec(
   });
 }
 
-export function pipe(input, command, options = {}) {
+export function pipe(
+      input: string,
+      command: string,
+      options: SubprocessOptions = {}): Promise<SubprocessReturnValue> {
   return new Promise((resolve, reject) => {
     const timeStart = +(new Date());
     const usedStart = (os.totalmem() - os.freemem()) / (1024 * 1024);
@@ -155,7 +175,8 @@ export function pipe(input, command, options = {}) {
     };
     execLogs.push(log);
 
-    const c = child_process.exec(command, options, (error, stdout, stderr) => {
+    // $FlowFixMe: flow's built-in typedef is bad
+    const c = child_process.exec(command, options, (error, stdout: string, stderr: string) => {
       let code;
       if (!error) {
         code = 0;
@@ -195,4 +216,75 @@ export function dumpMemoryLeakInfo() {
   for (let log of execLogs) {
     console.log(log);
   }
+}
+
+export type SafeParsedURL = {
+  protocol: string;
+  slashes: ?boolean;
+  auth: ?string;
+  host: string;
+  port: ?string;
+  hostname: string;
+  hash: ?string;
+  search: ?string;
+  query: ?any; // null | string | Object
+  pathname: string;
+  path: string;
+  href: string;
+}
+
+export class SafeURLParseError extends ExtendableError {
+  constructor(m: string) {
+    super(m);
+  }
+}
+
+/**
+ * Parses a URL but guarantees a non-null protocol/host/hostname/path/pathname.
+ * A SafeURLParseError will be thrown if any of these fields are unset.
+ * @param {string} urlString 
+ * @param {boolean} parseQueryString
+ */
+export function safeParseURL(
+      urlString: string,
+      parseQueryString: boolean = false): SafeParsedURL {
+  const parsed = url.parse(urlString, parseQueryString);
+
+  const protocol = parsed.protocol;
+  if (!protocol) {
+    throw new SafeURLParseError(`invalid protocol in url: ${urlString}`);
+  }
+
+  const host = parsed.host;
+  if (!host) {
+    throw new SafeURLParseError(`invalid host in url: ${urlString}`);
+  }
+
+  const hostname = parsed.hostname;
+  if (!hostname) {
+    throw new SafeURLParseError(`invalid hostname in url: ${urlString}`);
+  }
+
+  const path = parsed.path;
+  if (!path) {
+    throw new SafeURLParseError(`invalid path in url: ${urlString}`);
+  }
+
+  const pathname = parsed.pathname;
+  if (!pathname) {
+    throw new SafeURLParseError(`invalid path in url: ${urlString}`);
+  }
+
+  return {
+    protocol,
+    host, hostname,
+    path, pathname,
+    slashes: parsed.slashes,
+    auth: parsed.auth,
+    port: parsed.port,
+    hash: parsed.hash,
+    search: parsed.search,
+    query: parsed.query,
+    href: parsed.href
+  };
 }

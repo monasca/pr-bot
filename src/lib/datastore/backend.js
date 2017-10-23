@@ -31,8 +31,9 @@ export type Filter = {
 export interface Storable<T, U> {
   id(): string | null;
   dump(): T;
+  store(DatastoreBackend | null): Promise<any>;
+  settle(): Promise<any>;
 
-  settle?: () => Promise<any>;
   _meta?: any;
 
   static kind(): string;

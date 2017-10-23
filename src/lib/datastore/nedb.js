@@ -59,7 +59,7 @@ export default class NeDBDatastore extends DatastoreBackend {
 
   }
 
-  _db<T>(type: Class<T>) {
+  _db<T>(type: string | Class<T>) {
     // $FlowFixMe: static interface properties
     if (typeof type.kind === 'function') {
       type = type.kind();
@@ -88,9 +88,11 @@ export default class NeDBDatastore extends DatastoreBackend {
       _meta: { id: doc._id }
     });
 
+    // $FlowFixMe: flow can't handle static interface properties
     if (typeof type.load === 'function') {
       return type.load(data);
     } else {
+      // $FlowFixMe: flow can't handle static interface properties
       return new type(data);
     }
   }
@@ -122,7 +124,10 @@ export default class NeDBDatastore extends DatastoreBackend {
         }
 
         if (doc === null) {
+          // $FlowFixMe: flow can't handle static interface properties
           const typeName = typeof type.kind === 'function' ? type.kind() : type;
+
+          // $FlowFixMe
           reject(`not found: type=${typeName}, id=${id}`);
           return;
         }
@@ -148,6 +153,8 @@ export default class NeDBDatastore extends DatastoreBackend {
       id = object.id();
       if (id === null) {
         id = uuid();
+
+        // $FlowFixMe: this was defined above...
         object._meta.id = id;
       }
     } else {
@@ -177,6 +184,10 @@ export default class NeDBDatastore extends DatastoreBackend {
   delete<T, U>(object: Storable<T, U>): Promise<any> {
     return new Promise((resolve, reject) => {
       const kind = object.constructor.kind();
+
+      if (!object._meta) {
+        return Promise.reject(`object of kind ${kind} does not have an id`);
+      }
       const id = object._meta.id || object.id();
 
       this._db(kind).remove({ _id: id }, {}, (err, count) => {

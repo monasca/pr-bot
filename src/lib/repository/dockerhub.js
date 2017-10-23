@@ -55,7 +55,7 @@ export default class DockerHubRepository extends Repository {
     if (this.image) {
       const url = `${DOCKER_HUB_URL}/${this.namespace}/${this.image}/`;
       const promise = loadDockerHub(url).then(image => {
-        return { name: (image.name: string), type: 'docker' };
+        return [{ name: (image.name: string), type: 'docker' }];
       });
 
       this.modulesPromise = promise;

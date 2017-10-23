@@ -23,7 +23,7 @@ import  yaml from 'js-yaml';
 
 import * as config from './config';
 
-import { ExtendableError } from './util';
+import { ExtendableError, safeParseURL } from './util';
 
 import type { HipChatConfig } from './config';
 import type { TemplateEnvironment } from './template-util';
@@ -101,7 +101,7 @@ export class HipChatClient {
       this.from = null;
     }
 
-    const parts = url.parse(cfg.url, true);
+    const parts = safeParseURL(cfg.url, true);
     const tokens = parts.pathname.split('/');
     const roomIndex = tokens.indexOf('room');
     if (roomIndex < 0) {
@@ -109,9 +109,10 @@ export class HipChatClient {
     }
     this.roomId = tokens[roomIndex + 1];
 
-    if (typeof parts.query.auth_token === 'undefined') {
+    if (!parts.query || typeof parts.query.auth_token === 'undefined') {
       throw new HipChatError('No auth_token set in HipChat URL');
     }
+
     this.token = parts.query.auth_token;
   }
 

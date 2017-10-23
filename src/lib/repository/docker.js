@@ -12,16 +12,24 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const rp = require('request-promise-native');
+// @flow
 
-const { Repository } = require('./repository');
+//import rp from 'request-promise-native';
+
+import Repository from './repository';
+
+// TODO: all of this
+
+import type { RepositoryOptions, IntermediateModule } from './repository';
 
 /**
  * A `docker` repository for docker private docker registries like
  * library/registry or library/distribution. Notably *not* docker hub.
  */
-class DockerRepository extends Repository {
-  constructor(options = {}) {
+export default class DockerRepository extends Repository {
+  modulesPromise: Promise<any> | null;
+
+  constructor(options: RepositoryOptions) {
     super(options);
 
     this.modulesPromise = null;
@@ -31,13 +39,11 @@ class DockerRepository extends Repository {
     return 'docker';
   }
 
-  loadModules() {
+  loadModules(): Promise<IntermediateModule[]> {
     if (this.modulesPromise)  {
       return this.modulesPromise;
     }
 
-
+    throw new Error('TODO: not implemented yet');
   }
 }
-
-module.exports = { DockerRepository };

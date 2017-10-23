@@ -18,7 +18,7 @@ import * as datastore from './datastore';
 
 import Update from './update';
 
-import type { Storable } from './datastore/backend';
+import type DatastoreBackend, { Storable } from './datastore/backend';
 
 export type PullRequestOptions = {
   owner: string,
@@ -33,7 +33,7 @@ export default class PullRequest
   owner: string;
   repo: string;
   updateKey: ?mixed;
-  update: Update<T> | null;
+  update: Update<any> | null;
   dsPromise: ?Promise<any>;
   _meta: ?mixed;
 
@@ -82,7 +82,11 @@ export default class PullRequest
     };
   }
 
-  store(ds = null) {
+  settle(): Promise<any> {
+    return Promise.resolve();
+  }
+
+  store(ds: DatastoreBackend | null = null): Promise<any> {
     if (!ds) {
       ds = datastore.get();
     }

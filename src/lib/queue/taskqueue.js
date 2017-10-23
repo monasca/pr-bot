@@ -12,15 +12,19 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const { ExtendableError } = require('../util');
+// @flow
 
-class TaskQueueError extends ExtendableError {
-  constructor(m) {
+import { ExtendableError } from '../util';
+
+import type Task from '../task/task';
+
+export class TaskQueueError extends ExtendableError {
+  constructor(m: string) {
     super(m);
   }
 }
 
-class TaskQueue {
+export default class TaskQueue {
   constructor() {
 
   }
@@ -29,13 +33,12 @@ class TaskQueue {
 
   }
 
-  await() {
+  await(): Promise<any> {
     throw new TaskQueueError('await() not implemented');
   }
 
-  enqueue(task) {
+  // eslint-disable-next-line no-unused-vars
+  enqueue(task: Task): void {
     throw new TaskQueueError('enqueue() not implemented');
   }
 }
-
-module.exports = { TaskQueueError, TaskQueue };

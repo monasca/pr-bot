@@ -20,6 +20,7 @@ import * as check from './check';
 import { ExtendableError } from './util';
 
 import type { Storable } from './datastore/backend';
+import type DatastoreBackend from './datastore/backend';
 import type Repository from './repository/repository';
 
 export class ModuleError extends ExtendableError {
@@ -188,7 +189,11 @@ export default class Module implements Storable<ModuleOptions, Module> {
     };
   }
 
-  store(ds = null) {
+  settle(): Promise<any> {
+    return Promise.resolve();
+  }
+
+  store(ds: DatastoreBackend | null = null) {
     if (!ds) {
       ds = require('./datastore').get();
     }

@@ -23,12 +23,12 @@ import * as check from '../check';
 import * as config from '../config';
 import * as github from '../github';
 
-import { ExtendableError, exec, pipe } from '../util';
+import { ExtendableError, exec, pipe, safeParseURL } from '../util';
 import Module from '../module';
 import Repository from './repository';
 
 import type GitHub from 'github';
-import type { ParsedURL } from '../util';
+import type { ParsedURL, SubprocessOptions } from '../util';
 import type { IntermediateModule } from './repository';
 
 const repoBase = '/tmp/git';
@@ -41,7 +41,7 @@ export class GitError extends ExtendableError {
 
 function git(cwd: string, args: string | string[]) {
   const cfg = config.get();
-  const options: { cwd: string, env?: { [string]: string } } = { cwd };
+  const options: SubprocessOptions = { cwd };
   if (cfg.git.proxy) {
     options['env'] = {
       'HTTP_PROXY': cfg.git.proxy,
@@ -73,8 +73,8 @@ function delay<T>(value: T, timeout: number = 5000): Promise<T> {
 }
 
 export function gitRemoteEquals(a: string, b: string) {
-  const pa = url.parse(a);
-  const pb = url.parse(b);
+  const pa = safeParseURL(a);
+  const pb = safeParseURL(b);
 
   if (pa.protocol !== 'git:' && pa.protocol !== 'https:') {
     return false;
@@ -82,14 +82,6 @@ export function gitRemoteEquals(a: string, b: string) {
 
   if (pb.protocol !== 'git:' && pb.protocol !== 'https:') {
     return false;
-  }
-
-  if (!pa.hostname) {
-    throw new GitError('invalid git remote', a);
-  }
-
-  if (!pb.hostname) {
-    throw new GitError('invalid git remote', b);
   }
 
   if (pa.hostname.toLowerCase() !== pb.hostname.toLowerCase()) {
@@ -194,7 +186,7 @@ export default class GitRepository extends Repository {
       return Promise.resolve(this.fork);
     }
 
-    const parts = url.parse(this.remote);
+    const parts = safeParseURL(this.remote);
     
     const [ owner, repo ] = parts.pathname.substring(1).split('/');
     const gh = github.get(parts.hostname);
@@ -245,16 +237,10 @@ export default class GitRepository extends Repository {
       throw new GitError('repository must be checked out', 'n/a');
     }
 
-    const remoteParts = url.parse(this.remote);
-    if (!remoteParts.pathname) {
-      throw new GitError('invalid remote', this.remote);
-    }
+    const remoteParts = safeParseURL(this.remote);
     const [ owner, repo ] = remoteParts.pathname.substring(1).split('/');
 
-    const forkParts = url.parse(fork);
-    if (!forkParts.pathname) {
-      throw new GitError('invalid fork remote', fork);
-    }
+    const forkParts = safeParseURL(fork);
     const [ forkOwner ] = forkParts.pathname.substring(1).split('/');
 
     const gh = github.get(remoteParts.hostname);
@@ -273,10 +259,12 @@ export default class GitRepository extends Repository {
   }
 
   _auth(remote: string, force: boolean = false) {
-    const parts = url.parse(remote);
+    const parts = safeParseURL(remote);
 
     if (typeof this.auth === 'string') {
       parts.auth = this.auth;
+
+      // $FlowFixMe: flow's typedef for url.format seems broken
       return url.format(parts);
     }
 
@@ -289,6 +277,8 @@ export default class GitRepository extends Repository {
       }
 
       parts.auth = gh.auth.token;
+
+      // $FlowFixMe: flow's typedef for url.format seems broken
       return url.format(parts);
     }
 
@@ -353,8 +343,13 @@ export default class GitRepository extends Repository {
   commit(message: string) {
     console.log('commit: ' + message);
 
+    const localPath = this.localPath;
+    if (!localPath) {
+      throw new GitError('repository not initialized', 'invalid localPath');
+    }
+
     return pipe(message, 'git commit -F -', {
-      cwd: this.localPath
+      cwd: localPath
     });
   }
 
@@ -366,8 +361,19 @@ export default class GitRepository extends Repository {
 
   push() {
     const branch = this.localBranch;
-    if (!branch) {
-      throw new GitError('repository not initialized', 'invalid localBranch');
+    const localPath = this.localPath;
+    if (!branch || !localPath) {
+      throw new GitError(
+          'repository not initialized',
+          'invalid local branch or path');
+    }
+
+    if (!this.fork) {
+      throw new GitError('fork not initialized', 'invalid fork');
+    }
+
+    if (!this.localPath) {
+      throw new GitError('', '');
     }
 
     const forkWithAuth = this._auth(this.fork, true);
@@ -375,7 +381,7 @@ export default class GitRepository extends Repository {
     // don't use this._git since it could leak credentials if a GitError is
     // raised
     return exec(`git push "${forkWithAuth}" "${branch}"`, {
-      cwd: this.localPath
+      cwd: localPath
     });
   }
 

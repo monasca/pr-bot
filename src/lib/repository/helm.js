@@ -21,6 +21,7 @@ import yaml from 'js-yaml';
 
 import * as config from '../config';
 import Repository from './repository';
+import { safeParseURL } from '../util';
 
 import type { RepositoryOptions, IntermediateModule } from './repository';
 
@@ -52,8 +53,8 @@ export type HelmRequirements = {
 };
 
 export function helmRemoteEquals(a: string, b: string): boolean {
-  const pa = url.parse(a);
-  const pb = url.parse(b);
+  const pa = safeParseURL(a);
+  const pb = safeParseURL(b);
 
   if (pa.protocol !== pb.protocol) {
     return false;
@@ -112,7 +113,7 @@ export default class HelmRepository extends Repository {
 
   loadIndex(): Promise<HelmRepositoryIndex> {
     if (!this.indexPromise) {
-      const parts = url.parse(this.remote);
+      const parts = safeParseURL(this.remote);
       if (!parts.pathname.endsWith('/index.yaml')) {
         if (parts.pathname.endsWith('/')) {
           parts.pathname = `${parts.pathname}index.yaml`;
@@ -121,6 +122,7 @@ export default class HelmRepository extends Repository {
         }
       }
 
+      // $FlowFixMe: flow's built-in typedef seems to be wrong here
       const indexUrl = url.format(parts);
       const options: { [string]: mixed } = {
         uri: indexUrl
@@ -141,7 +143,8 @@ export default class HelmRepository extends Repository {
   }
 
   loadModules(): Promise<IntermediateModule[]> {
-    this.modulesPromise = this.loadIndex().then((index: HelmRepositoryIndex) => {
+    const index = this.loadIndex();
+    const mods = index.then((index: HelmRepositoryIndex) => {
       const modules: IntermediateModule[] = [];
       for (let entry of Object.keys(index.entries)) {
         modules.push({ name: entry, type: 'helm' });
@@ -150,9 +153,10 @@ export default class HelmRepository extends Repository {
       return modules;
     });
 
-    this.promises.push(this.indexPromise, this.modulesPromise);
+    this.modulesPromise = mods;
+    this.promises.push(mods);
 
-    return this.modulesPromise;
+    return mods;
   }
 
   type(): string {

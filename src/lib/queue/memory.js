@@ -12,9 +12,18 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const { TaskQueue } = require('./taskqueue');
+// @flow
 
-class MemoryTaskQueue extends TaskQueue {
+import TaskQueue from './taskqueue';
+
+import type Task from '../task/task';
+
+export default class MemoryTaskQueue extends TaskQueue {
+  queue: Task[];
+  active: boolean;
+  promise: null | Promise<any>;
+  callback: null | (boolean) => void;
+
   constructor() {
     super();
 
@@ -24,7 +33,7 @@ class MemoryTaskQueue extends TaskQueue {
     this.callback = null;
   }
 
-  _handleError(task, e) {
+  _handleError(task: Task, e: Error) {
     console.log(`task id=${task._id} failed:`, e);
     task.status = 'error';
     task.result = e.message;
@@ -44,7 +53,7 @@ class MemoryTaskQueue extends TaskQueue {
     });
   }
 
-  _process(task) {
+  _process(task: Task): Promise<any> {
     console.log(`processing task: type=${task.type} id=${task._id}`);
     this.active = true;
 
@@ -61,7 +70,7 @@ class MemoryTaskQueue extends TaskQueue {
         task.endedAt = +(new Date());
 
         return task.store();
-      }).catch(e => this._handleError(task, e));;
+      }).catch(e => this._handleError(task, e));
     } catch (e) {
       p = this._handleError(task, e);
     }
@@ -82,7 +91,7 @@ class MemoryTaskQueue extends TaskQueue {
     });
   }
 
-  enqueue(...tasks) {
+  enqueue(...tasks: Task[]): void {
     this.queue.push(...tasks);
 
     if (!this.active) {
@@ -95,9 +104,7 @@ class MemoryTaskQueue extends TaskQueue {
     }
   }
 
-  await() {
+  await(): Promise<any> {
     return this.promise || Promise.resolve(true);
   }
 }
-
-module.exports = { MemoryTaskQueue };

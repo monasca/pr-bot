@@ -25,7 +25,7 @@ import Update from '../update';
 import type { TaskOptions } from './task';
 
 type UpdateApplyData = {
-  update: Update,
+  update: Update<any>,
   src: Repository,
   dest: Repository
 };

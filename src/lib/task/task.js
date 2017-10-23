@@ -18,6 +18,8 @@ import uuid from 'uuid/v4';
 
 import { ExtendableError } from '../util';
 
+import type DatastoreBackend from '../datastore/backend';
+
 export class TaskError extends ExtendableError {
   constructor(m: string) {
     super(m);
@@ -105,7 +107,11 @@ export default class Task {
     };
   }
 
-  store(ds = null) {
+  settle(): Promise<any> {
+    return Promise.resolve();
+  }
+
+  store(ds: DatastoreBackend | null = null): Promise<any> {
     if (!ds) {
       ds = require('../datastore').get();
     }

@@ -128,10 +128,13 @@ function performSoftUpdate(repo: Repository) {
   });
 }
 
+
+// eslint-disable-next-line no-unused-vars
 function handlePing(req: $Request): Promise<string> {
   return Promise.resolve('hello world');
 }
 
+// eslint-disable-next-line no-unused-vars
 function handlePush(req: $Request): Promise<void> {
   // this may only be necessary if we want to support direct dependencies on
   // git repos at some point
@@ -145,6 +148,14 @@ function handlePush(req: $Request): Promise<void> {
 function handleStatus(req: $Request): Promise<any> {
   const parentRemote = req.body.repository.html_url;
   return functions.getRepositoryByRemote(parentRemote).then(parent => {
+    if (!parent) {
+      throw new HttpError(
+        `no repository found with parent remote: ${parentRemote}`,
+        500);
+    }
+
+    const parentName = parent.name;
+
     if (req.body.state === 'pending') {
       return Promise.resolve();
     } else if (req.body.state === 'success') {
@@ -158,7 +169,7 @@ function handleStatus(req: $Request): Promise<any> {
         // run an update if the master branch was updated (i.e. only on
         // merges that build successfully)
         ret = ret
-          .then(() => functions.getRepositoriesByParent(parent.name))
+          .then(() => functions.getRepositoriesByParent(parentName))
           .then(repos => Promise.all(repos.map(performSoftUpdate)));
       }
 
@@ -187,7 +198,7 @@ function handleStatus(req: $Request): Promise<any> {
   // like travis ci (docker hub publishing from monasca-docker)
 }
 
-function handlePageBuild(req: $Request): Promise<any> {
+async function handlePageBuild(req: $Request): Promise<any> {
   // page builds are supported for helm repositories, but incidentally come from
   // git-type repositories
   // we can support this relationship by assuming the git repository that
@@ -200,16 +211,25 @@ function handlePageBuild(req: $Request): Promise<any> {
   }
 
   const parentRemote = req.body.repository.html_url;
-  return functions.getRepositoryByRemote(parentRemote)
-      .then(parent => functions.getRepositoriesByParent(parent.name))
-      .then(repos => Promise.all(repos.map(performSoftUpdate)))
-      .then(() => 'success')
-      .catch(err => {
-        const message = `Error handling page_build for ${parentRemote}: ${err}`;
-        return safeNotifyError(message).then(() => 'update failed');
-      });
+  const parent = await functions.getRepositoryByRemote(parentRemote);
+  if (!parent) {
+    throw new HttpError(
+        `no repository found with parent remote: ${parentRemote}`,
+      500);
+  }
+
+  const repos = await functions.getRepositoriesByParent(parent.name);
+  try {
+    await Promise.all(repos.map(performSoftUpdate));
+    return 'success';
+  } catch (err) {
+    const message = `Error handling page_build for ${parentRemote}: ${err}`;
+    await safeNotifyError(message);
+    return 'update failed';
+  }
 }
 
+// eslint-disable-next-line no-unused-vars
 function handlePullRequest(req: $Request): Promise<void> {
   // TODO: maybe self-close PRs if another user posts a PR that manually
   // updates?
@@ -218,12 +238,14 @@ function handlePullRequest(req: $Request): Promise<void> {
   return Promise.resolve();
 }
 
+// eslint-disable-next-line no-unused-vars
 function handlePullRequestReview(req: $Request): Promise<void> {
   console.log('handlePullRequestReview()');
 
   return Promise.resolve();
 }
 
+// eslint-disable-next-line no-unused-vars
 function handlePullRequestReviewComment(req: $Request): Promise<void> {
   console.log('handlePullRequestReviewComment()');
   return Promise.resolve();
@@ -239,6 +261,7 @@ const handlers: { [string]: (req: $Request) => Promise<any> } = {
   'pull_request_review_comment': handlePullRequestReviewComment,
 };
 
+// eslint-disable-next-line no-unused-vars
 export function handle(req: $Request, res: $Response) {
   if (req.get('content-type') !== 'application/json') {
     throw new HttpError('content-type must be application/json', 406);

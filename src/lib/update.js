@@ -18,6 +18,7 @@ import * as datastore from './datastore';
 
 import Repository from './repository/repository';
 
+import type DatastoreBackend from './datastore/backend';
 import type { Storable } from './datastore/backend';
 
 type UpdateOptions = {
@@ -63,7 +64,8 @@ export default class Update<DestType: Repository>
 
     this.destRepository = null;
     promises.push(ds.get(Repository, this.destRepositoryName).then(r => {
-      this.destRepository = r;
+      const repo: DestType = (r: any);
+      this.destRepository = repo;
     }));
 
     this.dsPromise = Promise.all(promises).then(() => this);
@@ -92,11 +94,15 @@ export default class Update<DestType: Repository>
     };
   }
 
-  store(ds = null): void {
+  async settle(): Promise<any> {
+    return Promise.resolve();
+  }
+
+  store(ds: DatastoreBackend | null = null): Promise<any> {
     if (!ds) {
       ds = require('./datastore').get();
     }
 
-    ds.store(this);
+    return ds.store(this);
   }
 }

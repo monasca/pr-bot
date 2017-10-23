@@ -14,10 +14,15 @@
 
 // @flow
 
-import hipchat from '../hipchat';
+import * as hipchat from '../hipchat';
 
 import { ExtendableError } from '../util';
 import Module from '../module';
+
+import type DatastoreBackend from '../datastore/backend';
+import type { HipChatMessage } from '../hipchat';
+import type { ModuleUpdate } from '../module';
+import type { TemplateEnvironment } from '../template-util';
 
 export class RepositoryError extends ExtendableError {
   constructor(m: string) {
@@ -32,7 +37,7 @@ export type RepositoryOptions = {
   remote: string,
   room: ?string,
   modules: string[],
-  _meta: ?mixed
+  _meta?: ?mixed
 };
 
 export type ModulePatch = {
@@ -53,7 +58,7 @@ export default class Repository {
   room: ?string;
   _meta: ?mixed;
   modules: Module[];
-  promises: Promise<mixed>[];
+  promises: Promise<any>[];
 
   constructor(options: RepositoryOptions) {
     this.name = options.name;
@@ -141,10 +146,13 @@ export default class Repository {
   applyPatches(patches: ModulePatch[]) {
     for (let patch of patches) {
       if (patch.type === 'create') {
+        // this is dumb
+        const type: string = (patch.moduleType: any);
+
         this.modules.push(new Module({
           repository: this.name,
           name: patch.name,
-          type: patch.moduleType,
+          type: type,
           _meta: { repository: this }
         }));
       } else if (patch.type === 'delete') {
@@ -171,9 +179,13 @@ export default class Repository {
     return Promise.all(this.modules.map(mod => mod.diffDependencies()));
   }
 
-  applyModulePatches(updates) {
+  applyModulePatches(updates: ModuleUpdate[]) {
     for (let update of updates) {
       const module = this.modules.find(mod => mod.name === update.name);
+      if (!module) {
+        throw new RepositoryError(`invalid name in update: ${update.name}`);
+      }
+
       module.applyPatches(update.patches);
     }
   }
@@ -192,28 +204,30 @@ export default class Repository {
         .then(() => this.refreshDependencies());
   }
 
-  notify(message: string | { [string]: mixed}) {
-    if (!this.room) {
+  notify(message: string | HipChatMessage) {
+    const room = this.room;
+    if (!room) {
       return Promise.resolve();
     }
 
-    const hip = hipchat.get(this.room);
+    const hip = hipchat.get(room);
     if (!hip) {
-      console.log(`warning: no configured HipChat room matching: ${this.room}`);
+      console.log(`warning: no configured HipChat room matching: ${room}`);
       return Promise.resolve();
     }
 
     return hip.send(message);
   }
 
-  notifyTemplate(name: string, env) {
-    if (!this.room) {
+  notifyTemplate(name: string, env: TemplateEnvironment) {
+    const room = this.room;
+    if (!room) {
       return Promise.resolve();
     }
 
-    const hip = hipchat.get(this.room);
+    const hip = hipchat.get(room);
     if (!hip) {
-      console.log(`warning: no configured HipChat room matching: ${this.room}`);
+      console.log(`warning: no configured HipChat room matching: ${room}`);
       return Promise.resolve();
     }
 
@@ -236,11 +250,11 @@ export default class Repository {
     return this.name;
   }
 
-  settle() {
+  settle(): Promise<any> {
     return Promise.all(this.promises).then(() => this);
   }
 
-  dump() {
+  dump(): RepositoryOptions {
     return {
       type: this.type(),
       name: this.name,
@@ -251,16 +265,16 @@ export default class Repository {
     };
   }
 
-  store(ds = null) {
+  async store(ds: DatastoreBackend | null = null): Promise<any> {
     if (!ds) {
       ds = require('../datastore').get();
     }
 
-    const promises = this.modules.map(m => m.store(ds));
-    return Promise.all(promises).then(() => ds.store(this));
+    await Promise.all(this.modules.map(m => m.store(ds)));
+    return ds.store(this);
   }
 
-  static load(data) {
+  static load(data): Repository {
     return require('./index').create(data);
   }
 }

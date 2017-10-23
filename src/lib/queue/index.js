@@ -12,19 +12,31 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-const config = require('../config');
+// @flow
 
-let instance = null;
+import * as config from '../config';
+import { TaskQueueError } from './taskqueue';
 
-function init() {
-  let factories = new Map();
-  factories.set('memory', () => new (require('./memory').MemoryTaskQueue)());
+import type TaskQueue from './taskqueue';
+
+let instance: ?TaskQueue = null;
+
+type TaskQueueFactory = () => TaskQueue;
+
+function init(): TaskQueue {
+  let factories: Map<string, TaskQueueFactory> = new Map();
+  factories.set('memory', () => new (require('./memory').default)());
 
   const cfg = config.get();
-  return factories.get(cfg.queue.type)();
+  const factory = factories.get(cfg.queue.type);
+  if (!factory) {
+    throw new TaskQueueError(`invalid task queue type: ${cfg.queue.type}`);
+  }
+
+  return factory();
 }
 
-function get() {
+export function get() {
   if (instance === null) {
     instance = init();
     instance.init();
@@ -32,5 +44,3 @@ function get() {
 
   return instance;
 }
-
-module.exports = { get };
