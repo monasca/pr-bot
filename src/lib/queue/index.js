@@ -36,8 +36,8 @@ function init(): TaskQueue {
   return factory();
 }
 
-export function get() {
-  if (instance === null) {
+export function get(): TaskQueue {
+  if (!instance) {
     instance = init();
     instance.init();
   }

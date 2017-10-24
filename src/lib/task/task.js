@@ -29,7 +29,7 @@ export class TaskError extends ExtendableError {
 export type TaskOptions = {
   id?: string,
   previousId?: string,
-  type: string,
+  type?: string,
   data?: { [string]: mixed },
   status?: string,
   result?: mixed,
@@ -52,6 +52,10 @@ export default class Task {
   endedAt: number | null;
 
   constructor(options: TaskOptions) {
+    if (!options.type) {
+      throw new TaskError('type field is required');
+    }
+
     this._id = options.id || uuid();
     this.previousId = options.previousId || null;
     this.type = options.type;
@@ -88,7 +92,7 @@ export default class Task {
     return 'Task';
   }
 
-  id() {
+  id(): string {
     return this._id;
   }
 

@@ -38,7 +38,7 @@ export default class TaskQueue {
   }
 
   // eslint-disable-next-line no-unused-vars
-  enqueue(task: Task): void {
+  enqueue(...tasks: Task[]): Promise<void> {
     throw new TaskQueueError('enqueue() not implemented');
   }
 }

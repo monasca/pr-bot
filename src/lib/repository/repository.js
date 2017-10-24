@@ -115,7 +115,7 @@ export default class Repository {
     throw new RepositoryError('loadModules() not implemented');
   }
 
-  diffModules() {
+  diffModules(): Promise<ModulePatch[]> {
     // we don't use jsonpatch here because we only care about unordered
     // create/delete of modules
     return this.loadModules().then(modules => {

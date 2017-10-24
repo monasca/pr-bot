@@ -91,7 +91,7 @@ export default class MemoryTaskQueue extends TaskQueue {
     });
   }
 
-  enqueue(...tasks: Task[]): void {
+  enqueue(...tasks: Task[]): Promise<void> {
     this.queue.push(...tasks);
 
     if (!this.active) {
@@ -102,6 +102,8 @@ export default class MemoryTaskQueue extends TaskQueue {
 
       this._process(this.queue.shift());
     }
+
+    return Promise.resolve();
   }
 
   await(): Promise<any> {

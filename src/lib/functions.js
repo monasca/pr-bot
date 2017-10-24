@@ -155,7 +155,7 @@ export async function listDependents(
 export async function updateDependents(
       repo: Repository,
       moduleName: string,
-      toVersion: string): Promise<Update<any, any>[]> {
+      toVersion: string): Promise<Update<any>[]> {
   const mod = repo.getModule(moduleName);
   if (!mod) {
     throw new PRBotError(
@@ -269,7 +269,7 @@ export async function softUpdateRepository(name: string): Promise<any> {
         if (!mut) {
           // in case we detect a dependency that doesn't have a mutation plugin
           // yet
-          console.log('WARNING: no mutation plugin found matching '
+          console.warn('WARNING: no mutation plugin found matching '
               + `destRepo=${dest.type()} src=${srcType} dest=${destType}`);
           return Promise.resolve();
         }
