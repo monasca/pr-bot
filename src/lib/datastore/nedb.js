@@ -60,25 +60,30 @@ export default class NeDBDatastore extends DatastoreBackend {
   }
 
   _db<T>(type: string | Class<T>) {
+    let typeName: string;
+
     // $FlowFixMe: static interface properties
-    if (typeof type.kind === 'function') {
-      type = type.kind();
+    if (typeof type.kind === 'string') {
+      typeName = (type: any);
+    } else {
+      // $FlowFixMe: static interface properties
+      typeName = (type.kind(): any);
     }
 
-    if (this.db[type]) {
-      return this.db[type];
+    if (this.db[typeName]) {
+      return this.db[typeName];
     } else {
       let db;
       if (this.dir) {
         db = new Datastore({
-          filename: path.join(this.dir, `${type}.nedb`),
+          filename: path.join(this.dir, `${typeName}.nedb`),
           autoload: true
         });
       } else {
         db = new Datastore();
       }
 
-      this.db[type] = db;
+      this.db[typeName] = db;
       return db;
     }
   }
@@ -186,7 +191,7 @@ export default class NeDBDatastore extends DatastoreBackend {
       const kind = object.constructor.kind();
 
       if (!object._meta) {
-        return Promise.reject(`object of kind ${kind} does not have an id`);
+        return Promise.resolve(0);
       }
       const id = object._meta.id || object.id();
 

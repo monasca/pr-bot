@@ -15,7 +15,6 @@
 // @flow
 
 import path from 'path';
-import url from 'url';
 
 import  nunjucks from 'nunjucks';
 import  rp from 'request-promise-native';
@@ -133,7 +132,7 @@ export class HipChatClient {
       body.from = this.from;
     }
 
-    const options = {
+    const options: { [string]: mixed } = {
       uri: this.url,
       qs: { auth_token: this.token },
       method: 'POST',

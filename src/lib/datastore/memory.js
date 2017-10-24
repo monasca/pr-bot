@@ -91,18 +91,31 @@ export default class MemoryDatastore extends DatastoreBackend {
     for (let filter of filters) {
       ids = ids.filter(id => {
         const ent = typeMap.get(id);
+        if (!ent) {
+          return false;
+        }
+
         const field = ent[filter.f];
 
         return OPERATORS[filter.op](field, filter.val);
       });
     }
 
-    const objects = ids.map(id => this._deserialize(type, id, typeMap.get(id)));
+    const objects: T[] = ids.map(id => {
+      const ent = typeMap.get(id);
+      if (!ent) {
+        throw new DatastoreError('ent is impossibly undefined');
+      }
+
+      return this._deserialize(type, id, ent);
+    });
+
     return Promise.resolve(objects);
   }
 
-  get<T>(type: Class<T>, id: mixed): Promise<T> {
+  get<T>(type: Class<T>, id: any): Promise<T> {
     // constraining < T > to be a Storable is ... unpleasant
+    const idString: string = (id: string);
 
     // $FlowFixMe: static interface properties
     if (typeof type.kind !== 'function') {
@@ -111,10 +124,15 @@ export default class MemoryDatastore extends DatastoreBackend {
     }
 
     const typeMap = this.datastore.get(type.kind());
-    if (typeMap && typeMap.has(id)) {
-      return Promise.resolve(this._deserialize(type, id, typeMap.get(id)));
+    if (typeMap) {
+      const ent = typeMap.get(idString);
+      if (!ent) {
+        return Promise.reject(`could not find entity with id: ${idString}`);
+      }
+
+      return Promise.resolve(this._deserialize(type, id, ent));
     } else {
-      return Promise.reject(`could not find entity with id: ${id}`);
+      return Promise.reject(`could not find entity with id: ${idString}`);
     }
   }
 
@@ -132,6 +150,10 @@ export default class MemoryDatastore extends DatastoreBackend {
       this.datastore.set(kind, typeMap);
     }
 
+    if (typeof object._meta === 'undefined') {
+      object._meta = {};
+    }
+
     let id = object._meta.id;
     if (!id) {
       id = object.id() || uuid();
@@ -146,6 +168,10 @@ export default class MemoryDatastore extends DatastoreBackend {
     const typeMap = this.datastore.get(object.constructor.kind());
     if (!typeMap) {
       throw new DatastoreError(`invalid kind: ${object.constructor.kind()}`);
+    }
+
+    if (!object._meta) {
+      return Promise.resolve(false);
     }
 
     const id = object._meta.id || object.id();
