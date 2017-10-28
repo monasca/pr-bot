@@ -27,6 +27,23 @@ import type { CheckPluginType, CheckPluginResult } from './checkplugin';
 import type { IntermediateModule } from '../repository/repository';
 import type { ModuleDependency } from '../module';
 
+/**
+ * Hacky support for named multi-stage builds.
+ *
+ * `docker-file-parse` reads multistage FROM instructions as
+ * `container as name`. If we encounter an ' as ', discard it and all content
+ * to the right.
+ * @param {string} string
+ */
+function normalizeFromArgs(string: string) {
+  const index = string.indexOf(' as ');
+  if (index > -1) {
+    return string.substring(0, index);
+  } else {
+    return string;
+  }
+}
+
 export default class DockerGitCheckPlugin extends CheckPlugin<GitRepository> {
   constructor() {
     super();
@@ -64,15 +81,21 @@ export default class DockerGitCheckPlugin extends CheckPlugin<GitRepository> {
         .then(modulePath => fs.readFile(path.join(modulePath, 'Dockerfile'), 'utf-8'))
         .then(contents => {
           const dockerfile = parser.parse(contents);
-          const from = dockerfile.find(line => line.name === 'FROM');
-          const tag = parseDockerTag(from.args);
+          const froms = dockerfile.filter(line => line.name === 'FROM');
 
-          return [{
-            name: tag.image,
-            version: tag.tag,
-            type: 'docker',
-            remote: dockerTagToRemote(tag)
-          }];
+          const dependencies: ModuleDependency[] = [];
+          for (let from of froms) {
+            const tag = parseDockerTag(normalizeFromArgs(from.args));
+
+            dependencies.push({
+              name: tag.image,
+              version: tag.tag,
+              type: 'docker',
+              remote: dockerTagToRemote(tag)
+            });
+          }
+
+          return dependencies;
         });
   }
 
