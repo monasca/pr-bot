@@ -93,9 +93,7 @@ export default class UpdateCheckTask extends Task {
     return updates;
   }
 
-  async execute(data: any): Promise<mixed> {
-    const repo = (data: Repository);
-
+  async execute(repo: Repository): Promise<mixed> {
     // apply module updates first else we won't pick up any changes until 
     // the next event
     const mdiff = await repo.diffModules();
@@ -132,8 +130,10 @@ export default class UpdateCheckTask extends Task {
       });
 
       if (current) {
-        updates.push(...(await this.generateUpdates(
-            repo, changed.name, current.value)));
+        const ups = await this.generateUpdates(
+            repo, changed.name, current.value);
+
+        updates.push(...ups);
       }
     }
 

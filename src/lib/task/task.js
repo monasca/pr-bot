@@ -27,7 +27,6 @@ export class TaskError extends ExtendableError {
 }
 
 export type TaskOptions = {
-  id?: string,
   previousId?: string,
   type?: string,
   data?: { [string]: mixed },
@@ -41,6 +40,7 @@ export type TaskOptions = {
 
 export default class Task {
   _id: string;
+  _meta: any;
   previousId: string | null;
   type: string;
   data: { [string]: mixed };
@@ -56,7 +56,6 @@ export default class Task {
       throw new TaskError('type field is required');
     }
 
-    this._id = options.id || uuid();
     this.previousId = options.previousId || null;
     this.type = options.type;
     this.data = options.data || {};
@@ -66,6 +65,14 @@ export default class Task {
     this.createdAt = options.createdAt || +(new Date());
     this.startedAt = options.startedAt || null;
     this.endedAt = options.endedAt || null;
+
+    this._meta = options._meta || {};
+    if (this._meta.id) {
+      const idString: string = (this._meta.id: any);
+      this._id = idString;
+    } else {
+      this._id = uuid();
+    }
   }
 
   load(): Promise<any> {
@@ -82,7 +89,11 @@ export default class Task {
     }
 
     const clone = this.dump();
-    clone.id = uuid();
+    clone.status = 'pending';
+    clone.result = null;
+    clone.createdAt = +(new Date());
+    clone.startedAt = null;
+    clone.endedAt = null;
     clone.retries -= 1;
     clone.previousId = this._id;
     return Task.load(clone);
@@ -98,7 +109,6 @@ export default class Task {
 
   dump() {
     return {
-      id: this._id,
       previousId: this.previousId,
       type: this.type,
       data: this.data,

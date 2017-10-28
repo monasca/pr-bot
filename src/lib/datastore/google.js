@@ -18,7 +18,7 @@ import Datastore from '@google-cloud/datastore';
 
 import * as config from '../config';
 
-import DatastoreBackend, { DatastoreError} from './backend';
+import DatastoreBackend, { DatastoreError } from './backend';
 
 import type { Filter, Storable } from './backend';
 

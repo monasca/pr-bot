@@ -34,10 +34,15 @@ export function create(data: TaskOptions): Task {
     init();
   }
 
-  const clazz: ?Class<Task> = taskTypes.get(data.type);
+  const type = data.type;
+  if (!type) {
+    throw new Error('task data.type must not be null');
+  }
+
+  const clazz: ?Class<Task> = taskTypes.get(type);
   if (!clazz) {
     const TaskError = require('./task').TaskError;
-    throw new TaskError(`invalid task type: ${data.type}`);
+    throw new TaskError(`invalid task type: ${type}`);
   }
 
   return new clazz(data);

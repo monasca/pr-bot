@@ -22,7 +22,7 @@ import uuid from 'uuid';
 
 import * as config from '../config';
 
-import DatastoreBackend from './backend';
+import DatastoreBackend, { DatastoreError } from './backend';
 
 import type { Filter, Storable } from './backend';
 
@@ -63,11 +63,13 @@ export default class NeDBDatastore extends DatastoreBackend {
     let typeName: string;
 
     // $FlowFixMe: static interface properties
-    if (typeof type.kind === 'string') {
+    if (typeof type === 'string') {
       typeName = (type: any);
-    } else {
+    } else if (typeof type === 'function') {
       // $FlowFixMe: static interface properties
       typeName = (type.kind(): any);
+    } else {
+      throw new DatastoreError('type must implement kind(): ' + String(type));
     }
 
     if (this.db[typeName]) {
@@ -146,7 +148,7 @@ export default class NeDBDatastore extends DatastoreBackend {
         object: Storable<T, U>,
         settle: boolean = true): Promise<any> {
     if (settle && typeof object.settle === 'function') {
-      return object.settle().then(o => this.store(o, false));
+      return object.settle().then(() => this.store(object, false));
     }
 
     if (typeof object._meta === 'undefined') {

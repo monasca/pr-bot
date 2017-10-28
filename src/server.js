@@ -14,11 +14,15 @@
 
 // @flow
 
+import 'source-map-support/register';
+
+import exitHook from 'async-exit-hook';
 import bodyParser from 'body-parser';
 import express from 'express';
 
 import * as rest from './lib/api/rest';
 import * as webhook from './lib/api/webhook';
+import * as queue from './lib/queue';
 
 import { HttpError } from './lib/api/common';
 
@@ -38,7 +42,7 @@ function handleError(err: Error, res: $Response) {
   }
 }
 
-app.post('/', (req: $Request, res: $Response) => {
+app.post('/', async (req: $Request, res: $Response) => {
   let func;
   if (typeof req.get('X-GitHub-Event') !== 'undefined') {
     if (typeof req.get('X-Hub-Signature') === 'undefined') {
@@ -50,11 +54,12 @@ app.post('/', (req: $Request, res: $Response) => {
     func = rest.handle;
   }
 
-  Promise.resolve(func(req, res)).then(response => {
+  try {
+    let response = await func(req, res);
     res.status(200).send(response).end();
-  }).catch(err => {
+  } catch (err) {
     handleError(err, res);
-  });
+  }
 });
 
 app.use((err: Error, req: $Request, res: $Response, next: NextFunction) => {
@@ -67,4 +72,14 @@ app.use((err: Error, req: $Request, res: $Response, next: NextFunction) => {
 
 app.listen(3000, () => {
   console.log('listening on port 3000');
+});
+
+exitHook((callback) => {
+  console.log('waiting for queue to flush');
+  queue.get().await().then(() => {
+    callback();
+    console.log('queue has flushed');
+  }).catch(err => {
+    console.error('uncaught error on shutdown:', err);
+  });
 });

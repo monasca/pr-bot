@@ -20,7 +20,10 @@ import type { TaskOptions } from './task';
 
 export default class DummyTask extends Task {
   constructor(options: TaskOptions) {
-    super(options);
+    super({
+      type: 'dummy',
+      ...options
+    });
   }
 
   execute(): Promise<mixed> {

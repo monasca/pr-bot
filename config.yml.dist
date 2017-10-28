@@ -39,7 +39,7 @@ git:
 
 # backing db config
 datastore:
-  # database type, one of: gcloud, memory
+  # database type, one of: gcloud, memory, nedb
   type: gcloud
 
   # db engine specific config options
@@ -51,6 +51,10 @@ datastore:
 #  type: memory
 #  config:
 #    file: db.yml
+
+# task queue config
+queue:
+  type: memory
 
 # list of tokens that can access the main REST API, e.g.
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
