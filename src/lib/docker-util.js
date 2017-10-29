@@ -14,7 +14,11 @@
 
 // @flow
 
+import fs from 'fs-extra';
+import path from 'path';
+
 import rp from 'request-promise-native';
+import yaml from 'js-yaml';
 
 import * as config from './config';
 
@@ -68,9 +72,20 @@ export type DockerHubTag = {
   updated: number
 };
 
+export type DBuildVariant = {
+  tag: string,
+  aliases?: string[],
+  args?: { [string]: string }
+};
+
+export type DBuildManifest = {
+  repository: string,
+  variants: DBuildVariant[]
+}
+
 export async function loadDockerHub(
-      uri: string,
-      options: {[string]: mixed} = {}): Promise<any> {
+    uri: string,
+    options: {[string]: mixed} = {}): Promise<any> {
   options = Object.assign({}, { uri, json: true }, options);
 
   const cfg = config.get();
@@ -88,8 +103,8 @@ export async function loadDockerHub(
  * @param {object[]} results
  */
 export async function loadDockerHubResults(
-      uri: string,
-      results: DockerHubResult[] = []): Promise<DockerHubResult[]> {
+    uri: string,
+    results: DockerHubResult[] = []): Promise<DockerHubResult[]> {
   const response = await loadDockerHub(uri);
   results = results.concat(response.results);
 
@@ -106,7 +121,7 @@ export async function loadDockerHubResults(
  * @param {object} parsedTag
  */
 export async function loadDockerHubTags(
-      parsedTag: DockerTag): Promise<DockerHubTag[]> {
+    parsedTag: DockerTag): Promise<DockerHubTag[]> {
   const repo = dockerTagToRepository(parsedTag);
   const url = `${DOCKER_HUB_URL}/${repo}/tags/`;
 
@@ -150,8 +165,8 @@ export async function loadRegistryToken(repository: string): Promise<string> {
  * @param {string} token auth token if available
  */
 export async function loadTags(
-      parsedTag: DockerTag,
-      token: ?string = null): Promise<mixed> {
+    parsedTag: DockerTag,
+    token: ?string = null): Promise<mixed> {
   const repo = dockerTagToRepository(parsedTag);
   let tokenPromise: Promise<string>;
   if (token) {
@@ -174,7 +189,9 @@ export async function loadTags(
  * @param {object} tag the tag as parsed by `parseDockerTag`
  * @param {string} token a token, one will be requested if not provided
  */
-export function loadHash(tag: DockerTag, token: ?string = null): Promise<?string> {
+export function loadHash(
+    tag: DockerTag,
+    token: ?string = null): Promise<?string> {
   const repo = dockerTagToRepository(tag);
   let tokenPromise;
   if (token === null) {
@@ -209,8 +226,8 @@ export function loadHash(tag: DockerTag, token: ?string = null): Promise<?string
  * @param {*} within time in ms for tags to load, defaults to 1hr
  */
 export async function loadTagHashes(
-      parsedTag: DockerTag,
-      within: number = 3600000): Promise<DockerTagHash[]> {
+    parsedTag: DockerTag,
+    within: number = 3600000): Promise<DockerTagHash[]> {
   const repo = dockerTagToRepository(parsedTag);
   let tags = await loadDockerHubTags(parsedTag);
 
@@ -256,7 +273,7 @@ export async function loadTagHashes(
  *  - if no match, sort group by string length and return the longest
  * @param {object[]} tags
  */
-export function selectCurrentTag(tags: DockerTagHash[]) {
+export function selectCurrentTag(tags: DockerTagHash[]): string {
   const latest = tags.find(t => t.tag === 'latest');
 
   let candidates: DockerTagHash[];
@@ -329,7 +346,7 @@ export function parseDockerTag(string: string): DockerTag {
   return { registry, namespace, image, tag };
 }
 
-export function dockerTagToRemote(tag: DockerTag) {
+export function dockerTagToRemote(tag: DockerTag): string {
   let namespace = tag.namespace || 'library';
 
   if (tag.registry) {
@@ -345,4 +362,65 @@ export function dockerTagToRepository(tag: DockerTag): string {
   } else {
     return tag.image;
   }
+}
+
+export async function loadDBuildManifest(
+    modulePath: string): Promise<?DBuildManifest> {
+  const yamlPath = path.join(modulePath, 'build.yml');
+  const exists = await fs.exists(yamlPath);
+  if (!exists) {
+    return null;
+  }
+
+  const content = await fs.readFile(yamlPath, 'utf-8');
+  return yaml.safeLoad(content);
+}
+
+/**
+ * Loads a particular dbuild manifest given an ordered list of variant
+ * preferences.
+ * @param {*} modulePath 
+ * @param {*} variants an ordered list of variant preferences
+ */
+export async function loadDBuildVariant(
+    modulePath: string,
+    variants: string[]): Promise<?DBuildVariant> {
+  const manifest = await loadDBuildManifest(modulePath);
+  if (!manifest) {
+    return null;
+  }
+
+  for (let preference of variants) {
+    const variant = manifest.variants.find(v => v.tag === preference);
+    if (variant) {
+      return variant;
+    }
+  }
+
+  return null;
+}
+
+export async function loadComposeEnvironment(
+    localPath: string,
+    file: string = '.env'): Promise<{ [string]: string }> {
+  const envPath = path.join(localPath, file);
+  const exists = await fs.exists(envPath);
+  if (!exists) {
+    return {};
+  }
+
+  const content = await fs.readFile(envPath, 'utf-8');
+
+  const regex = /^([\w_]+)=(.+)$/gm;
+  const env: { [string]: string } = {};
+
+  let result = [];
+  while ((result = regex.exec(content)) !== null) {
+    const name = result[1];
+    const value = result[2];
+
+    env[name] = value;
+  }
+
+  return env;
 }

@@ -288,3 +288,10 @@ export function safeParseURL(
     href: parsed.href
   };
 }
+
+export function interpolate(string: string, env: { [string]: string }): string {
+  // NOTE: does not support $VAR style vars, only ${VAR}
+  return string.replace(/\$\{(\w+)\}/g, (match, p1) => {
+    return env[p1] || match;
+  });
+}
