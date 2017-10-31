@@ -8,7 +8,8 @@
     "start": "node index.js",
     "prebuild": "rimraf build/",
     "build": "babel src -d build/ --source-maps",
-    "prepublish": "yarn run build"
+    "prepublish": "yarn run build",
+    "watch": "babel src -d build/ --source-maps --watch"
   },
   "author": "",
   "license": "Apache-2.0",
