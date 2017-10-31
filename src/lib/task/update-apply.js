@@ -39,21 +39,16 @@ export default class UpdateApplyTask extends Task {
     });
   }
 
-  load(): Promise<UpdateApplyData> {
+  async load(): Promise<UpdateApplyData> {
     const { updateId } = this.data;
     const ds = datastore.get();
 
-    return ds.get(Update, updateId).then(up => up.dsLoad()).then(update => {
-      const repoPromises = [
-        update.srcRepository.settle(),
-        update.destRepository.settle()
-      ];
+    const update = await ds.get(Update, updateId).then(up => up.dsLoad());
 
-      return Promise.all(repoPromises).then(settled => {
-        const [src, dest] = settled;
-        return { update, src, dest };
-      });
-    });
+    const src = await update.srcRepository.settle();
+    const dest = await update.destRepository.settle();
+
+    return { update, src, dest };
   }
 
   execute(data: UpdateApplyData): Promise<mixed> {
