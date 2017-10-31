@@ -18,7 +18,7 @@ import * as datastore from '../datastore';
 import * as mutation from '../mutation';
 import * as queue from '../queue';
 
-import Task from './task';
+import Task, { TaskError } from './task';
 import Repository from '../repository/repository';
 import Update from '../update';
 
@@ -51,10 +51,36 @@ export default class UpdateApplyTask extends Task {
     return { update, src, dest };
   }
 
-  execute(data: UpdateApplyData): Promise<mixed> {
+  async execute(data: UpdateApplyData): Promise<mixed> {
     const { update, src, dest } = data;
 
-    // TODO!
-    return Promise.reject('TODO');
+    const srcMod = src.getModule(update.srcModule);
+    if (!srcMod) {
+      throw new TaskError(
+        `repository ${src.name} is missing module: ${update.srcModule}`);
+    }
+
+    const destMod = dest.getModule(update.destModule);
+    if (!destMod) {
+      throw new TaskError(
+        `repository ${dest.name} is missing module: ${update.destModule}`);
+    }
+
+    const mut = mutation.get(dest.type(), srcMod.type, destMod.type);
+    if (!mut) {
+      // in case we detect a dependency that doesn't have a mutation plugin
+      // yet
+      console.warn('WARNING: no mutation plugin found matching '
+        + `destRepo=${dest.type()} src=${srcMod.type} dest=${destMod.type}`);
+      return Promise.resolve();
+    }
+
+    console.log('applying mutation plugin for types:',
+      dest.type(), srcMod.type, destMod.type,
+      'mutation plugin: ', mut.constructor.name);
+
+    await mut.apply(update);
+    
+    return update.dump();
   }
 }
