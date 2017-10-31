@@ -28,6 +28,8 @@ import type { CheckPluginType, CheckPluginResult } from './checkplugin';
 import type { IntermediateModule } from '../repository/repository';
 import type { ModuleDependency } from '../module';
 
+const DBUILD_PREFERRED_VARIANTS = ['latest', 'master'];
+
 /**
  * Hacky support for named multi-stage builds.
  *
@@ -83,7 +85,10 @@ export default class DockerGitCheckPlugin extends CheckPlugin<GitRepository> {
     // TODO: this is a bit hacky, this should be configurable with issue #17
     // (right now we just hope the correct variant is latest or master)
     let vars: { [string]: string } = {};
-    const variant = await loadDBuildVariant(modulePath, ['latest', 'master']);
+    const variant = await loadDBuildVariant(
+      modulePath,
+      DBUILD_PREFERRED_VARIANTS,
+      true);
     if (variant && variant.args) {
       vars = variant.args;
     }

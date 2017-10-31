@@ -379,12 +379,15 @@ export async function loadDBuildManifest(
 /**
  * Loads a particular dbuild manifest given an ordered list of variant
  * preferences.
- * @param {*} modulePath 
+ * @param {*} modulePath local filesystem path to the repository
  * @param {*} variants an ordered list of variant preferences
+ * @param {*} useDefault if no matching variant is found, try to return a sane
+ *                       fallback (i.e. the first variant iff only one exists)
  */
 export async function loadDBuildVariant(
     modulePath: string,
-    variants: string[]): Promise<?DBuildVariant> {
+    variants: string[],
+    useFallback: boolean = false): Promise<?DBuildVariant> {
   const manifest = await loadDBuildManifest(modulePath);
   if (!manifest) {
     return null;
@@ -395,6 +398,10 @@ export async function loadDBuildVariant(
     if (variant) {
       return variant;
     }
+  }
+
+  if (useFallback && manifest.variants.length === 1) {
+    return manifest.variants[0];
   }
 
   return null;
