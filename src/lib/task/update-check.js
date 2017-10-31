@@ -153,6 +153,11 @@ export default class UpdateCheckTask extends Task {
     }
 
     await queue.get().enqueue(...tasks);
-    return `updates: ${tasks.length}`;
+
+    return {
+      dependencies: ddiff.length,
+      versions: vdiff.length,
+      updates: updates.length
+    };
   }
 }
