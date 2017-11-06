@@ -25,20 +25,55 @@ export class TaskQueueError extends ExtendableError {
 }
 
 export default class TaskQueue {
+  _initPromise: Promise<any> | null;
+
   constructor() {
+    this._initPromise = null;
+  }
+
+  _init(): Promise<any> {
 
   }
 
-  init() {
-
+  _await(): Promise<any> {
+    throw new TaskQueueError('_await() not implemented');
   }
 
-  await(): Promise<any> {
-    throw new TaskQueueError('await() not implemented');
+  async await(): Promise<any> {
+    if (this._initPromise) {
+      await this._initPromise;
+    } else {
+      const promise = this._init();
+      if (promise) {
+        this._initPromise = promise;
+        await promise;
+      } else {
+        this._initPromise = Promise.resolve();
+      }
+    }
+
+    return this._await();
   }
 
   // eslint-disable-next-line no-unused-vars
-  enqueue(...tasks: Task[]): Promise<void> {
-    throw new TaskQueueError('enqueue() not implemented');
+  _enqueue(...tasks: Task[]): Promise<void> {
+    throw new TaskQueueError('_enqueue() not implemented');
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  async enqueue(...tasks: Task[]): Promise<void> {
+    if (this._initPromise) {
+      await this._initPromise;
+    } else {
+      const promise = this._init();
+      if (promise) {
+        this._initPromise = promise;
+        await promise;
+      } else {
+        this._initPromise = Promise.resolve();
+      }
+    }
+
+    return this._enqueue(...tasks);
   }
 }

@@ -51,7 +51,7 @@ export type HipChatConfig = {
 
 export type TaskQueueConfig = {
   type: string,
-  config: { [string]: mixed }
+  config: { [string]: any }
 };
 
 export type Config = {
