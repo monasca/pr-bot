@@ -128,7 +128,6 @@ function performSoftUpdate(repo: Repository) {
   });
 }
 
-
 // eslint-disable-next-line no-unused-vars
 function handlePing(req: $Request): Promise<string> {
   return Promise.resolve('hello world');

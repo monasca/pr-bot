@@ -150,7 +150,6 @@ export class HipChatClient {
 
   sendTemplate(templateName: string, env: TemplateEnvironment) {
     const loaded = loadTemplate(templateName, env);
-    console.log('loaded:', loaded);
     return this.send(loaded);
   }
 }

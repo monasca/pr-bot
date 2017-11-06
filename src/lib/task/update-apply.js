@@ -18,6 +18,7 @@ import * as datastore from '../datastore';
 import * as mutation from '../mutation';
 import * as queue from '../queue';
 
+import NotifyTask from './notify';
 import Task, { TaskError } from './task';
 import Repository from '../repository/repository';
 import Update from '../update';
@@ -34,7 +35,7 @@ export default class UpdateApplyTask extends Task {
   constructor(options: TaskOptions) {
     super({
       type: 'update-apply',
-      retries: 3,
+      retries: 1,
       ...options
     });
   }
@@ -79,7 +80,17 @@ export default class UpdateApplyTask extends Task {
       dest.type(), srcMod.type, destMod.type,
       'mutation plugin: ', mut.constructor.name);
 
-    await mut.apply(update);
+    const result = await mut.apply(update);
+
+    if (dest.room) {
+      await queue.get().enqueue(new NotifyTask({
+        data: {
+          room: dest.room,
+          template: 'update',
+          env: { result }
+        }
+      }));
+    }
     
     return update.dump();
   }
