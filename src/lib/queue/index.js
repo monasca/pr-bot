@@ -39,7 +39,6 @@ function init(): TaskQueue {
 export function get(): TaskQueue {
   if (!instance) {
     instance = init();
-    instance.init();
   }
 
   return instance;

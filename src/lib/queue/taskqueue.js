@@ -32,7 +32,7 @@ export default class TaskQueue {
   }
 
   _init(): Promise<any> {
-
+    return Promise.resolve();
   }
 
   _await(): Promise<any> {
