@@ -35,7 +35,8 @@ const OPERATORS = {
   '>': (a, b) => a > b,
   '>=': (a, b) => a >= b,
   '<': (a, b) => a < b,
-  '<=': (a, b) => b <= b
+  '<=': (a, b) => b <= b,
+  'in': (a, b) => a.includes(b)
 };
 
 export default class MemoryDatastore extends DatastoreBackend {

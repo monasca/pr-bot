@@ -31,7 +31,8 @@ const OPERATORS = {
   '>': value => ({ $gt: value }),
   '>=': value => ({ $gte: value }),
   '<': value => ({ $lt: value }),
-  '<=': value => ({ $lte: value })
+  '<=': value => ({ $lte: value }),
+  'in': value => ({ $in: value })
 };
 
 export default class NeDBDatastore extends DatastoreBackend {

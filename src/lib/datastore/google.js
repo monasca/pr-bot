@@ -22,6 +22,15 @@ import DatastoreBackend, { DatastoreError } from './backend';
 
 import type { Filter, Storable } from './backend';
 
+const OPERATORS = {
+  '=': '=',
+  '>': '>',
+  '>=': '>=',
+  '<': '<',
+  '<=': '<=',
+  'in': '='
+};
+
 export default class GoogleDatastore extends DatastoreBackend {
   datastore: Datastore;
   keyConstructor: any;
@@ -61,7 +70,8 @@ export default class GoogleDatastore extends DatastoreBackend {
     // $FlowFixMe: this class gets insane to type properly
     let query = this.datastore.createQuery(type.name);
     for (let filter of filters) {
-      query = query.filter(filter.f, filter.op, filter.val);
+      const op = OPERATORS[filter.op];
+      query = query.filter(filter.f, op, filter.val);
     }
 
     return this.datastore
