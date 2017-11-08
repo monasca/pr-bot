@@ -16,54 +16,31 @@
 
 import * as datastore from './datastore';
 
-import Update from './update';
-
 import type DatastoreBackend, { Storable } from './datastore/backend';
 
-export type PullRequestOptions = {
-  owner: string,
-  repo: string,
-  updateKey: ?mixed,
-  update?: Update<any>
+export type PROptions = {
+  repository: string,
+  number: number,
+  commits?: ?string[]
 };
 
-export default class PullRequest
-      implements Storable<PullRequestOptions, PullRequest> {
-
-  owner: string;
-  repo: string;
-  updateKey: ?mixed;
-  update: Update<any> | null;
-  dsPromise: ?Promise<any>;
+/**
+ * Represents a GitHub pull request and helps us associate incoming status
+ * events with a particular pull request number (since GitHub does not expose
+ * this in the webhook payload or via the API)
+ */
+export default class PullRequest implements Storable<PROptions, PullRequest> {
+  repository: string;
+  number: number;
+  commits: string[];
   _meta: ?mixed;
 
-  constructor(options: PullRequestOptions) {
-    this.owner = options.owner;
-    this.repo = options.repo;
-
-    if (options.update) {
-      this.update = options.update;
-      this.dsPromise = Promise.resolve(this);
-    } else if (options.updateKey) {
-      this.update = null;
-      this.updateKey = options.updateKey;
-      this.dsPromise = datastore.get()
-          .get(Update, this.updateKey)
-          .then(update => {
-            this.update = update;
-            return this;
-          });
-    }
+  constructor(options: PROptions) {
+    this.repository = options.repository;
+    this.number = options.number;
+    this.commits = options.commits || [];
 
     this._meta = options._meta || {};
-  }
-
-  applyUpdate(update: Update<any>) {
-    
-  }
-
-  dsLoad() {
-    return this.dsPromise;
   }
 
   static kind(): string {
@@ -74,11 +51,11 @@ export default class PullRequest
     return null;
   }
 
-  dump(): PullRequestOptions {
+  dump(): PROptions {
     return {
-      owner: this.owner,
-      repo: this.repo,
-      updateKey: this.updateKey
+      repository: this.repository,
+      number: this.number,
+      commits: this.commits
     };
   }
 
