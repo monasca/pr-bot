@@ -63,7 +63,6 @@ export default class NeDBDatastore extends DatastoreBackend {
   _db<T>(type: string | Class<T>) {
     let typeName: string;
 
-    // $FlowFixMe: static interface properties
     if (typeof type === 'string') {
       typeName = (type: any);
     } else if (typeof type === 'function') {

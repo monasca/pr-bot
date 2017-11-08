@@ -22,9 +22,11 @@ export class DatastoreError extends ExtendableError {
   }
 }
 
+export type FilterOperator = '=' | '>' | '>=' | '<' | '<=' | 'in';
+
 export type Filter = {
   f: string,
-  op: string,
+  op: FilterOperator,
   val: mixed
 };
 
