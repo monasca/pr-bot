@@ -35,7 +35,7 @@ const OPERATORS = {
   '>': (a, b) => a > b,
   '>=': (a, b) => a >= b,
   '<': (a, b) => a < b,
-  '<=': (a, b) => b <= b,
+  '<=': (a, b) => a <= b,
   'in': (a, b) => a.includes(b)
 };
 
