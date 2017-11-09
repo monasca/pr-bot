@@ -35,8 +35,7 @@ export type RepositoryOptions = {
   name: string,
   parent: ?string,
   remote: string,
-  room: ?string,
-  modules: string[],
+  room?: ?string,
   _meta?: ?mixed
 };
 
@@ -74,7 +73,7 @@ export default class Repository {
     this.modules = [];
 
     this.promises = [];
-    if (options.modules) {
+    if (this._meta.id) {
       const dsLoad = this.loadDatastoreModules();
       this.promises.push(dsLoad);
       dsLoad.then(modules => {
@@ -260,7 +259,6 @@ export default class Repository {
       name: this.name,
       parent: this.parent,
       remote: this.remote,
-      modules: this.modules.map(m => m.name),
       room: this.room
     };
   }

@@ -16,6 +16,7 @@
 
 import * as config from '../config';
 import * as functions from '../functions';
+import * as queue from '../queue';
 
 import { HttpError } from './common';
 import Repository from '../repository/repository';
@@ -48,7 +49,7 @@ function doPost(req: $Request) {
     case 'getRepository':
       return functions.getRepository(req.body.name);
     case 'listRepositories':
-      return functions.listRepositories();
+      return functions.listRepositories().then(rs => rs.map(r => r.dump()));
     case 'getRepositoryByRemote':
       return functions.getRepositoryByRemote(req.body.remote);
     case 'listDependents':
@@ -56,11 +57,13 @@ function doPost(req: $Request) {
         req.body.repoName,
         req.body.moduleName);
     case 'addRepository':
-      return functions.addRepository(req.body).then(() => 'okay');
+      return functions.addRepository(req.body);
     case 'removeRepository':
       return functions.removeRepository(req.body.name).then(() => 'okay');
     case 'softUpdateRepository':
       return functions.softUpdateRepository(req.body.name).then(() => 'okay');
+    case 'getTask':
+      return functions.getTask(req.body.id);
     default:
       throw new HttpError(`invalid action: ${action}`, 400);
   }
@@ -69,6 +72,8 @@ function doPost(req: $Request) {
 function sanitizeSingle(object) {
   if (object instanceof Repository) {
     return functions.sanitizeRepository(object);
+  } else if (typeof object.dump === 'function') {
+    return object.dump();
   } else {
     return object;
   }

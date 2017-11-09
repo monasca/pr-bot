@@ -40,7 +40,7 @@ export function get(type: string): ?Class<Repository> {
   return repositoryTypes.get(type);
 }
 
-export function create(data: RepositoryOptions) {
+export function create(data: RepositoryOptions): Repository {
   if (!initialized) {
     init();
   }

@@ -16,14 +16,17 @@
 
 import * as datastore from './datastore';
 import * as mutation from './mutation';
+import * as queue from './queue';
 import * as repository from './repository';
 
+import AddRepositoryTask from './task/add-repository';
 import { ExtendableError } from './util';
 import Module from './module';
 import Repository from './repository/repository';
+import Task from './task/task';
 import Update from './update';
 
-import type { RepositoryOptions } from './repository/repository';
+import type { AddRepositoryData } from './task/add-repository';
 
 class PRBotError extends ExtendableError {
   constructor(m) {
@@ -31,46 +34,18 @@ class PRBotError extends ExtendableError {
   }
 }
 
-export type AddRepositoryOptions = {
-  name: string,
-  type: string,
-  remote: string,
-  parent: string | null
-};
-
-export function addRepository(options: RepositoryOptions): Promise<any> {
-  const { name, type, remote, parent } = options;
-
-  const clazz = repository.get(type);
-  if (!clazz) {
-    return Promise.reject(`Invalid repository type ${type}`);
-  }
-
-  console.log('adding repository:', { name, type, remote, parent });
-
-  const ds = datastore.get();
-
-  const checks = [];
-  const notExists = ds.get(Repository, name)
-      .catch(() => null) // get() should raise an error if no match
-      .then(r => {
-        if (r !== null) {
-          throw new PRBotError(`repository already exists with name: ${name}`);
-        }
-      });
-  checks.push(notExists);
-
-  if (typeof parent !== 'undefined' && parent !== null) {
-    checks.push(ds.get(Repository, parent));
-  }
-
-  return Promise.all(checks).then(() => {
-    const repo = repository.create(options);
-    return repo.refreshModules()
-        .then(() => repo.refreshVersions())
-        .then(() => repo.refreshDependencies())
-        .then(() => repo.store());
+export async function addRepository(options: AddRepositoryData): Promise<any> {
+  const { name, type, remote, parent, room } = options;
+  const task = new AddRepositoryTask({
+    data: { name, type, remote, parent, room }
   });
+
+  await queue.get().enqueue(task);
+
+  return {
+    message: 'task has been created',
+    taskId: task.id()
+  };
 }
 
 export function sanitizeRepository(repo: Repository) {
@@ -284,6 +259,13 @@ export async function softUpdateRepository(name: string): Promise<any> {
 
     return Promise.all(promises);
   });
+}
+
+export async function getTask(taskId: string): Promise<Task> {
+  const ds = datastore.get();
+  const task = await ds.get(Task, taskId);
+
+  return task;
 }
 
 // TODO: hard update: compare all modules (or some specific module) to their

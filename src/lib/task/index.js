@@ -21,7 +21,9 @@ let taskTypes: Map<string, Class<Task>> = new Map();
 
 function init(): void {
   taskTypes = new Map();
+  taskTypes.set('add-repository', require('./add-repository').default);
   taskTypes.set('notify', require('./notify').default);
+  taskTypes.set('pull-request-update', require('./pull-request-update').default);
   taskTypes.set('update-apply', require('./update-apply').default);
   taskTypes.set('update-check', require('./update-check').default);
   taskTypes.set('dummy', require('./dummy').default);
