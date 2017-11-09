@@ -104,7 +104,7 @@ export default class GoogleDatastore extends DatastoreBackend {
 
   store<T, U>(object: Storable<T, U>, settle: boolean = true): Promise<any> {
     if (settle && typeof object.settle === 'function') {
-      return object.settle().then(o => this.store(o, false));
+      return object.settle().then(() => this.store(object, false));
     }
 
     let meta = object._meta;
