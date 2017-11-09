@@ -15,6 +15,7 @@
 // @flow
 
 import TaskQueue from './taskqueue';
+import { TaskError } from '../task/task';
 
 import type Task from '../task/task';
 
@@ -40,6 +41,11 @@ export default class MemoryTaskQueue extends TaskQueue {
     task.endedAt = +(new Date());
 
     return task.store().then(() => {
+      if (e instanceof TaskError && !e.retriable) {
+        console.log(`task failed due to non-retriable error: ${e.message}`);
+        return Promise.resolve();
+      }
+
       const retry = task.retry();
 
       if (retry !== null) {

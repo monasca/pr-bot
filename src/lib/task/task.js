@@ -21,15 +21,19 @@ import { ExtendableError } from '../util';
 import type DatastoreBackend from '../datastore/backend';
 
 export class TaskError extends ExtendableError {
-  constructor(m: string) {
+  retriable: boolean;
+
+  constructor(m: string, retriable: boolean = true) {
     super(m);
+
+    this.retriable = retriable;
   }
 }
 
 export type TaskOptions = {
   previousId?: string,
   type?: string,
-  data?: { [string]: mixed },
+  data?: { [string]: any },
   status?: string,
   result?: mixed,
   retries?: number,
@@ -43,7 +47,7 @@ export default class Task {
   _meta: any;
   previousId: string | null;
   type: string;
-  data: { [string]: mixed };
+  data: { [string]: any };
   status: string;
   result: mixed;
   retries: number;
