@@ -17,8 +17,13 @@
 import crypto from 'crypto';
 
 import * as config from '../config';
+import * as datastore from '../datastore';
 import * as functions from '../functions';
 import * as hipchat from '../hipchat';
+import * as queue from '../queue';
+
+import PullRequest from '../pullrequest';
+import PullRequestUpdateTask from '../task/pull-request-update';
 
 import { HttpError } from './common';
 
@@ -229,12 +234,65 @@ async function handlePageBuild(req: $Request): Promise<any> {
 }
 
 // eslint-disable-next-line no-unused-vars
-function handlePullRequest(req: $Request): Promise<void> {
+async function handlePullRequest(req: $Request): Promise<any> {
   // TODO: maybe self-close PRs if another user posts a PR that manually
   // updates?
   console.log('handlePullRequest()');
 
-  return Promise.resolve();
+  if (req.body.action !== 'opened' || req.body.action !== 'synchronize') {
+    // TODO: handle close events (delete our tracked PR)
+    return;
+  }
+
+  const parentRemote = req.body.repository.html_url;
+  const parent = await functions.getRepositoryByRemote(parentRemote);
+  if (!parent) {
+    throw new HttpError(
+      `no repository found with parent remote: ${parentRemote}`,
+      500);
+  }
+
+  const number: number = req.body.pull_request.number;
+
+  const ds = datastore.get();
+
+  let pr: PullRequest;
+  try {
+    pr = await ds.first(PullRequest, [
+      { f: 'repository', op: '=', val: parent.name },
+      { f: 'number', op: '=', val: number }
+    ]);
+    console.debug(`found existing pr: ${parent.name}#${number}`);
+
+    const sha = req.body.pull_request.head.sha;
+    if (pr.commits.includes(sha)) {
+      return { message: 'already up to date' };
+    }
+
+    pr.commits.push(sha);
+    await pr.store();
+
+    return { message: `saved commit ${sha} to pr ${parent.name}#${number}` };
+  } catch (err) {
+    console.log(`new pr: ${parent.name}#${number}`);
+    pr = new PullRequest({
+      repository: parent.name,
+      number: number
+    });
+
+    await pr.store();
+
+    const task = new PullRequestUpdateTask({
+      data: { repositoryName: parent.name, pullRequestNumber: number }
+    });
+
+    await queue.get().enqueue(task);
+
+    return {
+      message: `tracking new pull request ${parent.name}#${number}`,
+      taskId: task.id()
+    };
+  }
 }
 
 // eslint-disable-next-line no-unused-vars

@@ -33,7 +33,7 @@ type PullRequestUpdateData = {
   pullRequest: PullRequest
 };
 
-export default class PullRequestUpdate extends Task {
+export default class PullRequestUpdateTask extends Task {
   constructor(options: TaskOptions) {
     super({
       type: 'pull-request-update',
