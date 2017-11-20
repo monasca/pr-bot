@@ -77,9 +77,10 @@ app.listen(3000, () => {
 exitHook((callback) => {
   console.log('waiting for queue to flush');
   queue.get().await().then(() => {
-    callback();
     console.log('queue has flushed');
+    callback();
   }).catch(err => {
     console.error('uncaught error on shutdown:', err);
+    callback();
   });
 });

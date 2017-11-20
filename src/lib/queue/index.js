@@ -26,6 +26,7 @@ type TaskQueueFactory = () => TaskQueue;
 function init(): TaskQueue {
   let factories: Map<string, TaskQueueFactory> = new Map();
   factories.set('memory', () => new (require('./memory').default)());
+  factories.set('google', () => new (require('./google').default)());
 
   const cfg = config.get();
   const factory = factories.get(cfg.queue.type);

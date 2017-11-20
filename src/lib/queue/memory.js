@@ -47,7 +47,6 @@ export default class MemoryTaskQueue extends TaskQueue {
       }
 
       const retry = task.retry();
-
       if (retry !== null) {
         console.log(`will retry task ${task._id}, new id=${retry._id}, `
             + `${retry.retries} attempts remain`);

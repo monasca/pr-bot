@@ -56,6 +56,17 @@ datastore:
 queue:
   type: memory
 
+# google PubSub example
+# queue:
+#   type: google
+#   # options are passed to public constructor
+#   # per the PubSub docs, these should be optional when running inside gcloud
+#   config:
+#     topic: monasca-ci-tasks
+#     auth:
+#       projectId: monasca-ci-testing
+#       keyFilename: 
+
 # list of tokens that can access the main REST API, e.g.
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 tokens:
