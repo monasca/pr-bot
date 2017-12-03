@@ -15,57 +15,114 @@
 // @flow
 
 import * as config from '../config';
+import * as datastore from '../datastore';
 import * as functions from '../functions';
 import * as queue from '../queue';
 
-import { HttpError } from './common';
+import { HttpError, Dispatcher } from './common';
+
+import AddRepositoryTask from '../task/add-repository';
+import Module from '../module';
 import Repository from '../repository/repository';
+import Task from '../task/task';
+import UpdateCheckTask from '../task/update-check';
 
 import type { $Request, $Response } from 'express';
 
-process.on('unhandledRejection', (reason) => {
-  console.log('unhandled rejection!', reason.stack);
+const dispatcher = new Dispatcher();
+
+dispatcher.on('getRepository', (req: $Request) => {
+  const name: string = req.body.name;
+  return datastore.get().get(Repository, name);
 });
 
-function verifyToken(req: $Request) {
+dispatcher.on('listRepositories', async (_req: $Request) => {
+  const repos = await datastore.get().list(Repository);
+  await Promise.all(repos.map(repo => repo.settle()));
+
+  return repos.map(r => r.dump());
+});
+
+dispatcher.on('getRepositoryByRemote', async (req: $Request) => {
+  const remote: string = req.body.remote;
+  const repos: Repository[] = await datastore.get().list(Repository);
+
+  return repos.find(r => r.providesRemote(remote));
+});
+
+dispatcher.on('listDependents', async (req: $Request) => {
+  // TODO: optimize me
+  const { repoName, moduleName } = req.body;
+
+  const ds = datastore.get();
+
+  const repo: Repository = await ds.get(Repository, repoName);
+  const mod = repo.getModule(moduleName);
+  if (!mod) {
+    throw new HttpError('unauthorized', 401);
+  }
+  
+  const modules = await ds.list(Module);
+  return modules.filter(m => m.dependsOn(repo, mod));
+});
+
+dispatcher.on('addRepository', async (req: $Request) => {
+  const { name, type, remote, parent, room } = req.body;
+  const task = new AddRepositoryTask({
+    data: { name, type, remote, parent, room }
+  });
+
+  await queue.get().enqueue(task);
+
+  return {
+    message: 'task has been created',
+    taskId: task.id()
+  };
+});
+
+dispatcher.on('removeRepository', async (req: $Request) => {
+  // TODO: this should be a task
+  const name = req.body.name;
+
+  const ds = datastore.get();
+  const repo = await ds.get(Repository, name);
+  await repo.settle();
+
+  await Promise.all(repo.modules.map(m => ds.delete(m)));
+  await ds.delete(repo);
+
+  return {
+    'message': 'okay'
+  };
+});
+
+dispatcher.on('softUpdateRepository', async (req: $Request) => {
+  const name: string = req.body;
+  const task = new UpdateCheckTask({
+    data: { repositoryName: name }
+  });
+
+  await queue.get().enqueue(task);
+
+  return {
+    message: 'update task has been created',
+    taskId: task.id()
+  };
+});
+
+dispatcher.on('getTask', async (req: $Request) => {
+  const taskId = req.body.id;
+
+  const ds = datastore.get();
+  const task = await ds.get(Task, taskId);
+
+  return task;
+});
+
+function verifyToken(req: $Request): void {
   const cfg = config.get();
   if (!cfg.tokens.find(t => t === req.body.token)) {
     throw new HttpError('unauthorized', 401);
-  }
-
-  return Promise.resolve(req);
-}
-
-function doPost(req: $Request) {
-  // GCF doesn't seem to allow JSON bodies for GET, and doesn't give us
-  // PATH_INFO ... so we'll have to handle everything in POST
-  // so maybe it's less REST and more "httpie friendly", but whatever
-  const action = req.body.action;
-  if (!action) {
-    throw new HttpError('`action` must be provided', 400);
-  }
-
-  switch (action) {
-    case 'getRepository':
-      return functions.getRepository(req.body.name);
-    case 'listRepositories':
-      return functions.listRepositories().then(rs => rs.map(r => r.dump()));
-    case 'getRepositoryByRemote':
-      return functions.getRepositoryByRemote(req.body.remote);
-    case 'listDependents':
-      return functions.listDependents(
-        req.body.repoName,
-        req.body.moduleName);
-    case 'addRepository':
-      return functions.addRepository(req.body);
-    case 'removeRepository':
-      return functions.removeRepository(req.body.name).then(() => 'okay');
-    case 'softUpdateRepository':
-      return functions.softUpdateRepository(req.body.name).then(() => 'okay');
-    case 'getTask':
-      return functions.getTask(req.body.id);
-    default:
-      throw new HttpError(`invalid action: ${action}`, 400);
   }
 }
 
@@ -87,7 +144,11 @@ function sanitizeIfNecessary(object: any): any {
   }
 }
 
-export function handle(req: $Request, res: $Response): Promise<any> {
+export async function handle(req: $Request, _res: $Response): Promise<any> {
+  // GCF doesn't seem to allow JSON bodies for GET, and doesn't give us
+  // PATH_INFO ... so we'll have to handle everything in POST
+  // so maybe it's less REST and more "httpie friendly", but whatever
+
   if (req.get('content-type') !== 'application/json') {
     throw new HttpError('content-type must be application/json', 406);
   }
@@ -96,5 +157,12 @@ export function handle(req: $Request, res: $Response): Promise<any> {
     throw new HttpError(`method not allowed: ${req.method}`, 405);
   }
 
-  return verifyToken(req).then(doPost).then(sanitizeIfNecessary);
+  verifyToken(req);
+
+  const response = await dispatcher.handle(req);
+  return sanitizeIfNecessary(response);
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.log('unhandled rejection!', reason.stack);
+});

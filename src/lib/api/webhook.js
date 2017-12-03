@@ -32,6 +32,10 @@ import type { $Request, $Response } from 'express';
 import type Repository from '../repository/repository';
 import type { TemplateEnvironment } from '../template-util';
 
+// TODO use Dispatcher
+// TODO use UpdateCheckTask instead of softUpdateRepository
+// TODO inline getRepositoryByRemote and getRepositoryByParent
+
 /**
  * Finds the configured GitHub block that verifies against this request's
  * secret. If no matching secret is found, an HttpError is raised.

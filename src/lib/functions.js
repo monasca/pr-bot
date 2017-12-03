@@ -16,17 +16,14 @@
 
 import * as datastore from './datastore';
 import * as mutation from './mutation';
-import * as queue from './queue';
-import * as repository from './repository';
 
-import AddRepositoryTask from './task/add-repository';
 import { ExtendableError } from './util';
 import Module from './module';
 import Repository from './repository/repository';
-import Task from './task/task';
 import Update from './update';
 
-import type { AddRepositoryData } from './task/add-repository';
+// TODO: remove unused repo functions now only used in webhook.js
+
 
 class PRBotError extends ExtendableError {
   constructor(m) {
@@ -34,51 +31,11 @@ class PRBotError extends ExtendableError {
   }
 }
 
-export async function addRepository(options: AddRepositoryData): Promise<any> {
-  const { name, type, remote, parent, room } = options;
-  const task = new AddRepositoryTask({
-    data: { name, type, remote, parent, room }
-  });
-
-  await queue.get().enqueue(task);
-
-  return {
-    message: 'task has been created',
-    taskId: task.id()
-  };
-}
-
 export function sanitizeRepository(repo: Repository) {
   return repo.settle().then(settled => ({
     repository: settled.dump(),
     modules: settled.modules.map(m => m.dump())
   }));
-}
-
-export function getRepository(name: string): Promise<Repository> {
-  const ds = datastore.get();
-
-  return ds.get(Repository, name);
-}
-
-export function removeRepository(name: string): Promise<any> {
-  const ds = datastore.get();
-
-  return ds.get(Repository, name)
-      .then(repo => repo.settle())
-      .then(repo => {
-        return Promise.all(repo.modules.map(m => ds.delete(m))).then(() => {
-          return ds.delete(repo);
-        });
-      });
-}
-
-export function listRepositories(): Promise<Repository[]> {
-  const ds = datastore.get();
-
-  return ds.list(Repository).then(repos => {
-    return Promise.all(repos.map(r => r.settle()));
-  });
 }
 
 export async function getRepositoryByRemote(
@@ -98,6 +55,9 @@ export function getRepositoriesByParent(
     { f: 'parent', op: '=', val: parentName }
   ]);
 }
+
+// TODO: remove listDependents, updateDependents, and softUpdateRepository
+// (now deprecated in favor of UpdateCheckTask, but still used in webhook.js)
 
 export async function listDependents(
       repoName: string,
@@ -259,13 +219,6 @@ export async function softUpdateRepository(name: string): Promise<any> {
 
     return Promise.all(promises);
   });
-}
-
-export async function getTask(taskId: string): Promise<Task> {
-  const ds = datastore.get();
-  const task = await ds.get(Task, taskId);
-
-  return task;
 }
 
 // TODO: hard update: compare all modules (or some specific module) to their

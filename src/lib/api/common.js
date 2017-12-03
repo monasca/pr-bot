@@ -16,9 +16,7 @@
 
 import { ExtendableError } from '../util';
 
-export type Request = {
-  
-}
+import type { $Request } from 'express';
 
 export class HttpError extends ExtendableError {
   code: number;
@@ -30,3 +28,28 @@ export class HttpError extends ExtendableError {
   }
 }
 
+export class Dispatcher {
+  actions: { [string]: ($Request) => Promise<any> };
+
+  constructor() {
+    this.actions = {};
+  }
+
+  on(name: string, func: ($Request) => Promise<any>) {
+    this.actions[name] = func;
+  }
+
+  handle(req: $Request) {
+    const action = req.body.action;
+    if (!action) {
+      throw new HttpError('an `action` is required', 400);
+    }
+
+    const func = this.actions[action];
+    if (!func) {
+      throw new HttpError(`invalid action: ${action}`, 400);
+    }
+
+    return func(req);
+  }
+}
