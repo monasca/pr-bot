@@ -21,16 +21,6 @@ import { HttpError } from './lib/api/common';
 
 import type { $Request, $Response } from 'express';
 
-// can use when GCF is able to validate requests properly
-//function handle(req, res) {
-//  const event = req.get('X-GitHub-Event');
-//  if (typeof event === 'undefined') {
-//    return rest.handle(req, res);
-//  } else {
-//    return webhook.handle(req, res);
-//  }
-//}
-
 function wrap(func) {
   try {
     return Promise.resolve(func());
@@ -39,45 +29,30 @@ function wrap(func) {
   }
 }
 
-export function bot(req: $Request, res: $Response) {
-  // once GCF can validate requests properly, we can combine the endpoints
-  //handle(req, res)
-  //    .then(response => {
-  //      res.status(200).send(response).end();
-  //    })
-  //    .catch(error => {
-  //      if (error instanceof HttpError) {
-  //        res.status(error.code).send(error.message).end();
-  //      } else {
-  //        console.log('unhandled error:', error);
-  //        res.status(500).send(error.message).end();
-  //      }
-  //    });
+export async function bot(req: $Request, res: $Response) {
+  try {
+    let handler;
+    if (typeof req.get('X-GitHub-Event') !== 'undefined') {
+      handler = webhook.handle;
 
-  wrap(() => rest.handle(req, res)).then(response => {
+      // see also: https://issuetracker.google.com/issues/36252545#comment29
+      // $FlowFixMe: rawBody is a custom property in GCF
+      webhook.verifySecret(req, res, req.rawBody);
+    } else {
+      handler = rest.handle;
+    }
+
+    const response = await wrap(() => handler(req, res));
     res.status(200).send(response).end();
-  }).catch(error => {
+  } catch (error) {
     if (error instanceof HttpError) {
       res.status(error.code).send(error.message).end();
     } else {
-      console.log('unhandled error:', error);
+      console.error('unhandled error:', error);
       res.status(500).send(error.message).end();
     }
-  });
-}
-
-export function webhook_asdf1234(req: $Request, res: $Response) {
-  wrap(() => webhook.handle(req, res)).then(response => {
-    res.status(200).send(response).end();
-  }).catch(error => {
-    if (error instanceof HttpError) {
-      res.status(error.code).send(error.message).end();
-    } else {
-      console.log('unhandled error:', error);
-      res.status(500).send(error.message).end();
-    }
-  });
+  }
 }
 
 // TODO: determine if GCF can directly use babel's output with export syntax
-//module.exports = { bot, webhook_asdf1234 };
+//module.exports = { bot };

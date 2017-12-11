@@ -46,7 +46,6 @@ export function verifySecret(req: $Request, res: $Response, buf: Buffer) {
     return;
   }
 
-  // NOTE: does not work on GCF
   const cfg = config.get();
   
   let githubs = cfg.github;
@@ -273,11 +272,6 @@ export function handle(req: $Request, res: $Response) {
     throw new HttpError('method not allowed', 405);
   }
 
-  // TODO: it isn't currently possible to get the raw request body in GCF, so
-  // we can't reliably verify the request
-  // workaround is to use a random endpoint name for now
-  // see also: https://issuetracker.google.com/issues/36252545
-  //const gh = verifySecret(req);
   const event = req.get('X-GitHub-Event');
   console.log('event:', event);
   console.log('payload:', req.body);

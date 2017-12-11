@@ -153,13 +153,30 @@ See the documentation for each deployment method:
    * Must be accessible to GitHub webhooks (public GitHub = public internet)
 
 For Docker deployments, the (combined) endpoint is `http://localhost:3000`. For
-Google Cloud Functions deployments, there are two endpoints: `/bot` for the REST
-API and `/webhook_...` for handling GitHub webhooks; the full addresses will be
-printed to the console during deployment.
+Google Cloud Functions deployments, the endpoint will vary depending on your
+project and deployment options; the full addresses will be printed to the
+console during deployment.
+
+The API
+-------
+
+The API is used to manage the bot. It can be used to add and remove tracked
+repositories, manually trigger updates, and so on.
+
+The API is REST-ish at best, as Google Cloud Functions doesn't expose
+`$PATH_INFO` or similar. It only listens on `/` and dispatches requests based on
+either the `action` field in the posted JSON body or the GitHub event header.
+
+All API requests must be authenticated, but this has different requirements
+depending on context:
+ * For GitHub events (where `X-GitHub-Event` is set) an `X-Hub-Signature`
+   header is requred ([info][5])
+ * For API calls a `token` field is required in the JSON request body and must
+   match a token configured in `config.yml`
 
 ### Configure repositories via the API
 
-API examples use [HTTPie][5], this is the recommended method for working with
+API examples use [HTTPie][6], this is the recommended method for working with
 the pr-bot API. The API is published at `/bot`. Once the function is deployed to
 either the emulator or a public GCF endpoint, the URL will be printed. 
 
@@ -193,7 +210,7 @@ http post http://localhost:8010/monasca-ci-testing/us-central1/bot \
     token=deadbeef \
     action=addRepository \
     type=git \
-    name=my-helm-repo-git
+    name=my-helm-repo-git \
     remote=https://github.com/my-org/my-helm-repo/
 ```
 
@@ -287,4 +304,5 @@ Parameters:
 [2]: https://blog.hipchat.com/2015/02/11/build-your-own-integration-with-hipchat/
 [3]: https://github.com/monasca/pr-bot/blob/master/docs/cloud-functions.md
 [4]: https://github.com/monasca/pr-bot/blob/master/docs/docker.md
-[5]: https://httpie.org/
+[5]: https://developer.github.com/webhooks/securing/
+[6]: https://httpie.org/
