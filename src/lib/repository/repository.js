@@ -86,7 +86,7 @@ export default class Repository {
     return remote === this.remote;
   }
 
-  getModule(name: string): Module | null {
+  getModule(name: string): ?Module {
     return this.modules.find(m => m.name === name);
   }
 
@@ -275,4 +275,46 @@ export default class Repository {
   static load(data): Repository {
     return require('./index').create(data);
   }
+
+  static get(
+      name: string,
+      ds: DatastoreBackend | null = null): Promise<Repository> {
+    if (!ds) {
+      ds = require('../datastore').get();
+    }
+
+    return ds.get(Repository, name);
+  }
+
+  static list(ds: DatastoreBackend | null = null): Promise<Repository[]> {
+    if (!ds) {
+      ds = require('../datastore').get();
+    }
+
+    return ds.list(Repository);
+  }
+
+  static async getByRemote(
+      remote: string,
+      ds: DatastoreBackend | null = null): Promise<?Repository> {
+    if (!ds) {
+      ds = require('../datastore').get();
+    }
+
+    const repos = await ds.list(Repository);
+    return repos.find(r => r.providesRemote(remote));
+  }
+
+  static listByParent(
+      parentName: string,
+      ds: DatastoreBackend | null = null): Promise<Repository[]> {
+    if (!ds) {
+      ds = require('../datastore').get();
+    }
+
+    return ds.list(Repository, [
+      { f: 'parent', op: '=', val: parentName }
+    ]);
+  }
+
 }

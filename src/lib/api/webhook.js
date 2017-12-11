@@ -18,23 +18,20 @@ import crypto from 'crypto';
 
 import * as config from '../config';
 import * as datastore from '../datastore';
-import * as functions from '../functions';
-import * as hipchat from '../hipchat';
 import * as queue from '../queue';
 
 import PullRequest from '../pullrequest';
 import PullRequestUpdateTask from '../task/pull-request-update';
+import Repository from '../repository/repository';
+import UpdateCheckTask from '../task/update-check';
 
-import { HttpError } from './common';
+import { HttpError, Dispatcher } from './common';
 
 import type { $Request, $Response } from 'express';
 
-import type Repository from '../repository/repository';
 import type { TemplateEnvironment } from '../template-util';
 
-// TODO use Dispatcher
-// TODO use UpdateCheckTask instead of softUpdateRepository
-// TODO inline getRepositoryByRemote and getRepositoryByParent
+const dispatcher = new Dispatcher();
 
 /**
  * Finds the configured GitHub block that verifies against this request's
@@ -85,65 +82,11 @@ function safeNotify(
   });
 }
 
-function safeNotifyError(message: string, repo: ?Repository = null) {
-  console.log('safeNotifyError for repo', repo);
-
-  let promise;
-  if (repo) {
-    promise = repo.notify(message);
-  } else {
-    const hip = hipchat.getDefault();
-    if (hip) {
-      promise = hip.send(message);
-    } else {
-      promise = Promise.resolve();
-    }
-  }
-
-  return promise.catch(err => {
-    console.log('error sending error notification: ', err);
-  });
-}
-
-function performSoftUpdate(repo: Repository) {
-  console.log('updating repository: ', repo.name);
-
-  return functions.softUpdateRepository(repo.name).then(ret => {
-    console.log('successfully updated repository', repo.name);
-
-    // sUR returns a list of update results per update, so flatten it 
-    const results = [].concat(...ret);
-    if (results.length === 0) {
-      console.log('no updates were applied, will not notify');
-      return Promise.resolve();
-    } else {
-      return Promise.all(results.map(result => {
-        if (!result) {
-          // result will be null/undefined if no mutation plugin was found
-          return Promise.resolve();
-        }
-
-        console.log('publishing notification for result:', result);
-
-        return safeNotify('update', { result }, repo);
-      }));
-    }
-  }).catch(err => {
-    console.log(`error in softUpdateRepository for ${repo.name}: `, err);
-
-    // notify, then bubble up the error so we return a 500
-    return safeNotifyError(`Error updating ${repo.name}: ${err}`)
-        .then(() => { throw err; });
-  });
-}
-
-// eslint-disable-next-line no-unused-vars
-function handlePing(req: $Request): Promise<string> {
+dispatcher.on('ping', (_req: $Request): Promise<string> => {
   return Promise.resolve('hello world');
-}
+});
 
-// eslint-disable-next-line no-unused-vars
-function handlePush(req: $Request): Promise<void> {
+dispatcher.on('push', (_req: $Request): Promise<void> => {
   // this may only be necessary if we want to support direct dependencies on
   // git repos at some point
   // right now we only depend on indirect artifacts e.g. github-pages, builds
@@ -151,50 +94,60 @@ function handlePush(req: $Request): Promise<void> {
   console.log('handlePush()');
 
   return Promise.resolve();
-}
+});
 
-function handleStatus(req: $Request): Promise<any> {
+dispatcher.on('status', async (req: $Request): Promise<any> => {
   const parentRemote = req.body.repository.html_url;
-  return functions.getRepositoryByRemote(parentRemote).then(parent => {
-    if (!parent) {
-      throw new HttpError(
-        `no repository found with parent remote: ${parentRemote}`,
-        500);
+  const parent = await Repository.getByRemote(parentRemote);
+  if (!parent) {
+    throw new HttpError(
+      `no repository found with parent remote: ${parentRemote}`,
+      500);
+  }
+
+  if (req.body.state === 'pending') {
+    // don't care about pending (~= CI ack)
+    return Promise.resolve();
+  } else if (req.body.state === 'success') {
+    // notify of the success regardless of branch (will apply to PRs)
+    // note that we can't currently link back to PRs, see:
+    // https://github.com/monasca/pr-bot/issues/8
+
+    // TODO rethink status notifications per
+    // https://github.com/monasca/pr-bot/issues/24
+
+    // TODO include link to pull request in status env
+    await safeNotify('status', { payload: req.body }, parent);
+
+    const master = req.body.branches.find(b => b.name === 'master');
+    if (master) {
+      // run an update if the master branch was updated (i.e. only on
+      // merges that build successfully)
+      const repos = await Repository.listByParent(parent.name);
+      const tasks = repos.map(repo => new UpdateCheckTask({
+        data: { repositoryName: repo.name }
+      }));
+
+      await queue.get().enqueue(...tasks);
+
+      return {
+        message: `updates scheduled: ${tasks.length}`,
+        repositories: repos.map(r => r.name),
+        taskIds: tasks.map(t => t.id())
+      };
     }
+  } else {
+    // failure or error... we'll treat both the same
+    // no updates to do on our end, just notify about the failure
+    // https://github.com/monasca/pr-bot/issues/24
+    await safeNotify('status', { payload: req.body }, parent);
+  }
 
-    const parentName = parent.name;
-
-    if (req.body.state === 'pending') {
-      return Promise.resolve();
-    } else if (req.body.state === 'success') {
-      // notify of the success regardless of branch (will apply to PRs)
-      // note that we can't currently link back to PRs, see:
-      // https://github.com/monasca/pr-bot/issues/8
-      let ret = safeNotify('status', { payload: req.body }, parent);
-
-      const master = req.body.branches.find(b => b.name === 'master');
-      if (master) {
-        // run an update if the master branch was updated (i.e. only on
-        // merges that build successfully)
-        ret = ret
-          .then(() => functions.getRepositoriesByParent(parentName))
-          .then(repos => Promise.all(repos.map(performSoftUpdate)));
-      }
-
-      return ret
-          .then(() => 'success')
-          .catch(err => {
-            const message = `Error handling status for ${parentRemote}: ${err}`;
-            return safeNotifyError(message).then(() => 'update failed');
-          });
-    } else {
-      // failure or error... we'll treat both the same
-      // no updates to do on our end, just notify about the failure
-      return safeNotify('status', { payload: req.body }, parent);
-    }
-  }).catch(err => {
-    console.log('could not load repo, may not be tracked:', parentRemote, err);
-  });
+  return {
+    message: 'no updates scheduled',
+    repositories: [],
+    taskIds: []
+  };
 
   // TODO: test this to figure out semantics for the 'branches' object
   // we only care about status updates on master
@@ -204,44 +157,45 @@ function handleStatus(req: $Request): Promise<any> {
   // master...)
   // this event should work for artifacts published from existing CI/CD infra
   // like travis ci (docker hub publishing from monasca-docker)
-}
+});
 
-async function handlePageBuild(req: $Request): Promise<any> {
+dispatcher.on('page_build', async (req: $Request): Promise<any> => {
   // page builds are supported for helm repositories, but incidentally come from
   // git-type repositories
   // we can support this relationship by assuming the git repository that
   // spawned this event is marked as the parent repository
   const status = req.body.build.status;
   if (status !== 'built') {
-    console.log('pages build did not succeed, skipping: ' +
-        req.body.repository.name);
+    console.log(
+      `page_build did not succeed, skipping: ${req.body.repository.name}`);
     return Promise.resolve();
   }
 
   const parentRemote = req.body.repository.html_url;
-  const parent = await functions.getRepositoryByRemote(parentRemote);
+  const parent = await Repository.getByRemote(parentRemote);
   if (!parent) {
     throw new HttpError(
-        `no repository found with parent remote: ${parentRemote}`,
+      `no repository found with parent remote: ${parentRemote}`,
       500);
   }
 
-  const repos = await functions.getRepositoriesByParent(parent.name);
-  try {
-    await Promise.all(repos.map(performSoftUpdate));
-    return 'success';
-  } catch (err) {
-    const message = `Error handling page_build for ${parentRemote}: ${err}`;
-    await safeNotifyError(message);
-    return 'update failed';
-  }
-}
+  const repos = await Repository.listByParent(parent.name);
+  const tasks = repos.map(repo => new UpdateCheckTask({
+    data: { repositoryName: repo.name }
+  }));
 
-// eslint-disable-next-line no-unused-vars
-async function handlePullRequest(req: $Request): Promise<any> {
+  await queue.get().enqueue(...tasks);
+
+  return {
+    message: `updates scheduled: ${tasks.length}`,
+    repositories: repos.map(r => r.name),
+    taskIds: tasks.map(t => t.id())
+  };
+});
+
+dispatcher.on('pull_request', async (req: $Request): Promise<any> => {
   // TODO: maybe self-close PRs if another user posts a PR that manually
   // updates?
-  console.log('handlePullRequest()');
 
   if (req.body.action !== 'opened' || req.body.action !== 'synchronize') {
     // TODO: handle close events (delete our tracked PR)
@@ -249,7 +203,7 @@ async function handlePullRequest(req: $Request): Promise<any> {
   }
 
   const parentRemote = req.body.repository.html_url;
-  const parent = await functions.getRepositoryByRemote(parentRemote);
+  const parent = await Repository.getByRemote(parentRemote);
   if (!parent) {
     throw new HttpError(
       `no repository found with parent remote: ${parentRemote}`,
@@ -297,30 +251,17 @@ async function handlePullRequest(req: $Request): Promise<any> {
       taskId: task.id()
     };
   }
-}
+});
 
-// eslint-disable-next-line no-unused-vars
-function handlePullRequestReview(req: $Request): Promise<void> {
-  console.log('handlePullRequestReview()');
-
+dispatcher.on('pull_request_review', async (_req: $Request): Promise<any> => {
+  // TODO
   return Promise.resolve();
-}
+});
 
-// eslint-disable-next-line no-unused-vars
-function handlePullRequestReviewComment(req: $Request): Promise<void> {
-  console.log('handlePullRequestReviewComment()');
+dispatcher.on('pull_request_review_comment', async (_req: $Request): Promise<any> => {
+  // TODO
   return Promise.resolve();
-}
-
-const handlers: { [string]: (req: $Request) => Promise<any> } = {
-  'ping': handlePing,
-  'push': handlePush,
-  'status': handleStatus,
-  'page_build': handlePageBuild,
-  'pull_request': handlePullRequest,
-  'pull_request_review': handlePullRequestReview,
-  'pull_request_review_comment': handlePullRequestReviewComment,
-};
+});
 
 // eslint-disable-next-line no-unused-vars
 export function handle(req: $Request, res: $Response) {
@@ -345,10 +286,5 @@ export function handle(req: $Request, res: $Response) {
     throw new HttpError('an event type is required', 400);
   }
 
-  const handler = handlers[event];
-  if (!handler) {
-    throw new HttpError('invalid event type: ' + event, 400);
-  }
-
-  return handler(req);
+  return dispatcher.handle(req, event);
 }

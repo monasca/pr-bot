@@ -18,6 +18,8 @@ import { ExtendableError } from '../util';
 
 import type { $Request } from 'express';
 
+import type Repository from '../repository/repository';
+
 export class HttpError extends ExtendableError {
   code: number;
 
@@ -39,8 +41,7 @@ export class Dispatcher {
     this.actions[name] = func;
   }
 
-  handle(req: $Request) {
-    const action = req.body.action;
+  handle(req: $Request, action: string) {
     if (!action) {
       throw new HttpError('an `action` is required', 400);
     }
@@ -52,4 +53,11 @@ export class Dispatcher {
 
     return func(req);
   }
+}
+
+export function sanitizeRepository(repo: Repository) {
+  return repo.settle().then(settled => ({
+    repository: settled.dump(),
+    modules: settled.modules.map(m => m.dump())
+  }));
 }

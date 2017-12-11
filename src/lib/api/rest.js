@@ -16,10 +16,9 @@
 
 import * as config from '../config';
 import * as datastore from '../datastore';
-import * as functions from '../functions';
 import * as queue from '../queue';
 
-import { HttpError, Dispatcher } from './common';
+import { HttpError, Dispatcher, sanitizeRepository } from './common';
 
 import AddRepositoryTask from '../task/add-repository';
 import Module from '../module';
@@ -128,7 +127,7 @@ function verifyToken(req: $Request): void {
 
 function sanitizeSingle(object) {
   if (object instanceof Repository) {
-    return functions.sanitizeRepository(object);
+    return sanitizeRepository(object);
   } else if (typeof object.dump === 'function') {
     return object.dump();
   } else {
@@ -159,7 +158,8 @@ export async function handle(req: $Request, _res: $Response): Promise<any> {
 
   verifyToken(req);
 
-  const response = await dispatcher.handle(req);
+  const action = req.body.action;
+  const response = await dispatcher.handle(req, action);
   return sanitizeIfNecessary(response);
 }
 
