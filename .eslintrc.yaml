@@ -1,17 +1,24 @@
 ---
 extends:
   - eslint:recommended
-  - plugin:import/errors
-  - plugin:import/warnings
+#  - plugin:import/errors
+#  - plugin:import/warnings
+#  - plugin:flowtype/recommended
+
+parser: babel-eslint
+
+globals:
+  Class: false
 
 parserOptions:
   ecmaVersion: 6
   sourceType: module
   ecmaFeatures:
-    modules: true,
+    modules: true
 
 plugins:
   - import
+#  - flowtype
 
 env:
   node: true
@@ -28,6 +35,7 @@ rules:
 
   no-unused-vars:
     - 2
+    - argsIgnorePattern: '^_'
 
   no-warning-comments:
     - 1

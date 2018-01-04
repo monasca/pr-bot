@@ -1,0 +1,59 @@
+// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations
+// under the License.
+
+// @flow
+
+import * as hipchat from '../hipchat';
+
+import Task from './task';
+
+import type { HipChatClient } from '../hipchat';
+import type { TaskOptions } from './task';
+
+export default class NotifyTask extends Task {
+  constructor(options: TaskOptions) {
+    super({
+      type: 'notify',
+      retries: 3,
+      ...options
+    });
+  }
+
+  execute(): Promise<mixed> {
+    const room: string = (this.data.room: any);
+    const template: string = (this.data.template: any);
+    const env: { [string]: mixed } = (this.data.env: any);
+
+    let instance: HipChatClient;
+    if (room) {
+      let maybe = hipchat.get(room);
+      if (!maybe) {
+        console.log(`room ${room} not configured, will not notify`);
+        return Promise.resolve();
+      }
+
+      instance = maybe;
+    } else {
+      let maybe = hipchat.getDefault();
+      if (!maybe) {
+        console.log('default room not configured, will not notify');
+        return Promise.resolve();
+      }
+
+      instance = maybe;
+    }
+
+    return instance.sendTemplate(template, env);
+  }
+}
