@@ -185,7 +185,8 @@ export default class Module implements Storable<ModuleOptions, Module> {
       alias: this.alias,
       versions: this.versions,
       current: this.current,
-      dependencies: this.dependencies
+      dependencies: this.dependencies,
+      path: this.path
     };
   }
 

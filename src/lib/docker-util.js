@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -15,8 +15,10 @@
 // @flow
 
 import fs from 'fs-extra';
+import os from 'os';
 import path from 'path';
 
+import jsonpath from 'jsonpath';
 import rp from 'request-promise-native';
 import yaml from 'js-yaml';
 
@@ -27,6 +29,8 @@ import { ExtendableError } from './util';
 export const DOCKER_HUB_URL = 'https://hub.docker.com/v2/repositories';
 export const DOCKER_REGISTRY_URL = 'https://registry.hub.docker.com/v2';
 export const MANIFEST_CONTENT_TYPE = 'application/vnd.docker.distribution.manifest.v2+json';
+
+export const COMPOSE_IMAGE_QUERY = '$.services..[?(@.image)]';
 
 export const DOCKER_AUTH_URL = 'https://auth.docker.io/token';
 export const DOCKER_AUTH_SERVICE = 'registry.docker.io';
@@ -408,26 +412,52 @@ export async function loadDBuildVariant(
 }
 
 export async function loadComposeEnvironment(
-    localPath: string,
-    file: string = '.env'): Promise<{ [string]: string }> {
-  const envPath = path.join(localPath, file);
-  const exists = await fs.exists(envPath);
-  if (!exists) {
-    return {};
+    envPath: string): Promise<{ [string]: string }> {
+  const ret: { [string]: string } = {};
+
+  const contents = await fs.readFile(envPath, 'utf-8');
+  for (let line of contents.split(os.EOL)) {
+    // remove comments
+    // NOTE: this will break on '#' chars inside quoted strings, but considering
+    // '#' is invalid in any part of a docker tag it shouldn't ever matter
+    const hashPos = line.indexOf('#');
+    if (hashPos > -1) {
+      line = line.substring(0, hashPos);
+    }
+
+    // skip empty lines
+    line = line.trim();
+    if (line.length === 0) {
+      continue;
+    }
+
+    const [name, ...rest] = line.split('=');
+    ret[name] = rest.join('=');
   }
 
-  const content = await fs.readFile(envPath, 'utf-8');
+  return ret;
+}
 
-  const regex = /^([\w_]+)=(.+)$/gm;
-  const env: { [string]: string } = {};
 
-  let result = [];
-  while ((result = regex.exec(content)) !== null) {
-    const name = result[1];
-    const value = result[2];
+type ComposeDependency = {
+  path: string,
+  value: {
+    image: string,
+    environment?: { [string]: string },
+    depends_on?: string[],
+    ports?: string[]
+  }
+};
 
-    env[name] = value;
+export function findComposeDependencies(compose: mixed): ComposeDependency[] {
+  const dependencies = [];
+
+  for (let node of jsonpath.nodes(compose, COMPOSE_IMAGE_QUERY)) {
+    dependencies.push({
+      path: jsonpath.stringify(node.path),
+      value: node.value
+    });
   }
 
-  return env;
+  return dependencies;
 }

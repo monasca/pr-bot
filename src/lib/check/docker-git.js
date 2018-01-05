@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -38,7 +38,7 @@ const DBUILD_PREFERRED_VARIANTS = ['latest', 'master'];
  * to the right.
  * @param {string} string
  */
-function normalizeFromArgs(string: string) {
+function normalizeFromArgs(string: string): string {
   const index = string.indexOf(' as ');
   if (index > -1) {
     return string.substring(0, index);
@@ -62,8 +62,7 @@ export default class DockerGitCheckPlugin extends CheckPlugin<GitRepository> {
         .then(modulePath => fs.exists(path.join(modulePath, 'Dockerfile')));
   }
 
-  // eslint-disable-next-line no-unused-vars
-  check(repository: GitRepository, moduleName: string): Promise<CheckPluginResult> {
+  check(_repo: GitRepository, _mod: string): Promise<CheckPluginResult> {
     // docker sources are effectively unversioned, since tags are often
     // generated at build/release time (timestamps or otherwise)
     // since dependents only care about binary versions, we don't need real

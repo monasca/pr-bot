@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -35,7 +35,7 @@ export default class MemoryTaskQueue extends TaskQueue {
   }
 
   _handleError(task: Task, e: Error) {
-    console.log(`task id=${task._id} failed:`, e);
+    console.error(`task id=${task._id} failed:`, e);
     task.status = 'error';
     task.result = e.message;
     task.endedAt = +(new Date());

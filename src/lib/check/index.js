@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,6 +14,7 @@
 
 // @flow
 
+import DockerComposeGitCheckPlugin from './docker-compose-git';
 import DockerGitCheckPlugin from './docker-git';
 import DockerHubCheckPlugin from './dockerhub';
 import HelmCheckPlugin from './helm';
@@ -28,6 +29,7 @@ let plugins: CheckPlugin<any>[] = [];
 
 function init() {
   plugins = [
+    new DockerComposeGitCheckPlugin(),
     new DockerGitCheckPlugin(),
     new DockerHubCheckPlugin(),
     new HelmCheckPlugin(),

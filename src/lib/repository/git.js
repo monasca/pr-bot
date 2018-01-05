@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -385,17 +385,26 @@ export default class GitRepository extends Repository {
     });
   }
 
-  async modulePath(mod: Module | string) {
-    let name;
-    if (mod instanceof Module) {
-      name = mod.name;
+  async modulePath(mod: Module | string): Promise<string> {
+    const lp = await this.clone();
+
+    let realModule: Module;
+    if (typeof mod === 'string') {
+      const maybeMod = this.getModule(mod);
+      if (maybeMod) {
+        realModule = maybeMod;
+      } else {
+        return path.join(lp, mod);
+      }
     } else {
-      name = mod;
+      realModule = mod;
     }
 
-    // TODO support flat repositories
-    const lp = await this.clone();
-    return path.join(lp, name);
+    if (realModule.path) {
+      return path.join(lp, realModule.path);
+    } else {
+      return path.join(lp, realModule.name);
+    }
   }
 
   async loadModules(): Promise<IntermediateModule[]> {

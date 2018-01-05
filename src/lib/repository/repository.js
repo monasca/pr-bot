@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -42,12 +42,14 @@ export type RepositoryOptions = {
 export type ModulePatch = {
   type: 'create' | 'delete',
   name: string,
-  moduleType?: string
+  moduleType?: string,
+  modulePath?: string | null
 };
 
 export type IntermediateModule = {
   name: string,
-  type: string
+  type: string,
+  path?: string | null
 };
 
 export default class Repository {
@@ -129,7 +131,8 @@ export default class Repository {
           patches.push({
             type: 'create',
             name: mod.name,
-            moduleType: mod.type
+            moduleType: mod.type,
+            modulePath: mod.path || null
           });
         }
       }
@@ -152,6 +155,7 @@ export default class Repository {
           repository: this.name,
           name: patch.name,
           type: type,
+          path: patch.modulePath,
           _meta: { repository: this }
         }));
       } else if (patch.type === 'delete') {
