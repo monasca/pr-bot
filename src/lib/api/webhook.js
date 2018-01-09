@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -219,7 +219,7 @@ dispatcher.on('pull_request', async (req: $Request): Promise<any> => {
       { f: 'repository', op: '=', val: parent.name },
       { f: 'number', op: '=', val: number }
     ]);
-    console.debug(`found existing pr: ${parent.name}#${number}`);
+    console.log(`found existing pr: ${parent.name}#${number}`);
 
     const sha = req.body.pull_request.head.sha;
     if (pr.commits.includes(sha)) {

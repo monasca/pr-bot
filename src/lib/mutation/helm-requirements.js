@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -29,7 +29,6 @@ import type Update from '../update';
 import type { MutationPluginType, MutationResult } from './mutationplugin';
 
 function updateRequirements(
-      repository: GitRepository,
       update: Update<GitRepository>,
       requirements: HelmRequirements) {
   const src = update.srcRepository;
@@ -48,7 +47,6 @@ function updateRequirements(
 
     dep.repository = src.remote;
     dep.version = update.toVersion;
-    return;
   }
 
   throw new MutationException(
@@ -83,7 +81,7 @@ export default class HelmRequirementsMutationPlugin
     const reqsStr = await fs.readFile(reqsPath);
 
     const reqs = yaml.safeLoad(reqsStr);
-    updateRequirements(repository, update, reqs);
+    updateRequirements(update, reqs);
     await fs.writeFile(reqsPath, yaml.safeDump(reqs));
 
     await repository.getOrCreateFork();

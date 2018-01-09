@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -16,6 +16,7 @@
 
 import MutationPlugin from './mutationplugin';
 
+import DockerComposeMutationPlugin from './docker-compose';
 import HelmRequirementsMutationPlugin from './helm-requirements';
 import HelmValuesMutationPlugin from './helm-values';
 import LandscaperMutationPlugin from './landscaper';
@@ -24,6 +25,7 @@ let initialized: boolean = false;
 let plugins: MutationPlugin<any>[] = [];
 
 function init() {
+  plugins.push(new DockerComposeMutationPlugin());
   plugins.push(new HelmRequirementsMutationPlugin());
   plugins.push(new HelmValuesMutationPlugin());
   plugins.push(new LandscaperMutationPlugin());

@@ -368,6 +368,25 @@ export function dockerTagToRepository(tag: DockerTag): string {
   }
 }
 
+export function dockerTagToString(tag: DockerTag): string {
+  if (tag.registry) {
+    // 'library' namespace is not implicit for private docker registries,
+    // so don't filter it out
+    let ret: string = `${tag.registry}`;
+    if (tag.namespace) {
+      ret = `${ret}/${tag.namespace}/`;
+    }
+
+    return `${ret}/${tag.image}:${tag.tag}`;
+  } else {
+    if (!tag.namespace || tag.namespace === 'library') {
+      return `${tag.image}:${tag.tag}`;
+    } else {
+      return `${tag.namespace}/${tag.image}:${tag.tag}`;
+    }
+  }
+}
+
 export async function loadDBuildManifest(
     modulePath: string): Promise<?DBuildManifest> {
   const yamlPath = path.join(modulePath, 'build.yml');
@@ -438,6 +457,20 @@ export async function loadComposeEnvironment(
   return ret;
 }
 
+export async function patchComposeEnvironment(
+    envPath: string, patches: { [string]: string }): Promise<string> {
+  // not really compatible with loadComposeEnvironment since we want to preserve
+  // user formatting
+  const contents = await fs.readFile(envPath, 'utf-8');
+  const regex = /^([\w_]+)=([^\#\s]*\S)(\s*\#.*|)$/gm;
+  return contents.replace(regex, (match, k, v, c) => {
+    if (k in patches) {
+      return `${k}=${patches[k]}${c}`;
+    } else {
+      return match;
+    }
+  });
+}
 
 type ComposeDependency = {
   path: string,
