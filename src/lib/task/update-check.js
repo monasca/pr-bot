@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -100,7 +100,7 @@ export default class UpdateCheckTask extends Task {
     repo.applyPatches(mdiff);
 
     const created = mdiff.filter(p => p.type === 'create');
-    const deleted = mdiff.filter(p => p.type === 'deleted');
+    const deleted = mdiff.filter(p => p.type === 'delete');
     console.log(
       'refreshed modules, created:', created,
       'deleted:', deleted);
