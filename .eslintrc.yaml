@@ -9,6 +9,8 @@ parser: babel-eslint
 
 globals:
   Class: false
+  T: false
+  U: false
 
 parserOptions:
   ecmaVersion: 6
