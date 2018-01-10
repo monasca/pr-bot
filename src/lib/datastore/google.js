@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -51,10 +51,10 @@ export default class GoogleDatastore extends DatastoreBackend {
 
   }
 
-  _deserialize<T>(type: Class<T>, entity: { [string]: mixed }): T {
+  _deserialize<T>(type: Class<T>, entity: { [string]: any }): T {
     const data = {
       ...entity,
-      _meta: { id: entity[this.datastore.KEY] }
+      _meta: { id: entity[this.datastore.KEY].name }
     };
 
     // $FlowFixMe: flow can't handle static interface properties
@@ -126,7 +126,11 @@ export default class GoogleDatastore extends DatastoreBackend {
       
       meta.id = key;
     } else {
-      key = meta.id;
+      if (meta.id instanceof this.keyConstructor) {
+        key = meta.id;
+      } else {
+        key = this.datastore.key([object.constructor.kind(), meta.id]);
+      }
     }
     
     const data = object.dump();
