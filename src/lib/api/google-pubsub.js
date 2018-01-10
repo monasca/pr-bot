@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -22,12 +22,12 @@ import * as queue from '../queue';
 import Task, { TaskError } from '../task/task';
 
 
-type PubSubMessage = {
+export type PubSubMessage = {
   data: string,
   attributes: { [string]: any }
 };
 
-type CloudFunctionsEvent = {
+export type CloudFunctionsEvent = {
   data: PubSubMessage
 };
 

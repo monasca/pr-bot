@@ -14,12 +14,14 @@
 
 // @flow
 
+import * as googlePubsub from './lib/api/google-pubsub';
 import * as rest from './lib/api/rest';
 import * as webhook from './lib/api/webhook';
 
 import { HttpError } from './lib/api/common';
 
 import type { $Request, $Response } from 'express';
+import type { CloudFunctionsEvent } from './lib/api/google-pubsub';
 
 function wrap(func) {
   try {
@@ -54,5 +56,6 @@ export async function bot(req: $Request, res: $Response) {
   }
 }
 
-// TODO: determine if GCF can directly use babel's output with export syntax
-//module.exports = { bot };
+export async function pubsub(event: CloudFunctionsEvent, callback: Function) {
+  googlePubsub.handlePubSub(event, callback);
+}
