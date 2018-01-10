@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -83,7 +83,7 @@ export default class Task {
     return Promise.resolve();
   }
 
-  execute(data: any): Promise<mixed> { // eslint-disable-line no-unused-vars
+  execute(_data: any): Promise<mixed> {
     throw new TaskError('execute() not implemented');
   }
 
