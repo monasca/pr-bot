@@ -24,6 +24,7 @@ import Update from '../update';
 import UpdateApplyTask from './update-apply';
 
 import type { TaskOptions } from './task';
+import type { ModulePatch } from '../repository/repository';
 
 export default class UpdateCheckTask extends Task {
   constructor(options: TaskOptions) {
@@ -96,15 +97,27 @@ export default class UpdateCheckTask extends Task {
   async execute(repo: Repository): Promise<mixed> {
     // apply module updates first else we won't pick up any changes until 
     // the next event
-    const mdiff = await repo.diffModules();
-    repo.applyPatches(mdiff);
+    await repo.settle();
 
+    const mdiff: ModulePatch[] = await repo.diffModules();
     const created = mdiff.filter(p => p.type === 'create');
     const deleted = mdiff.filter(p => p.type === 'delete');
+    console.log(`refreshed modules, ${mdiff.length} patches to apply`);
     console.log(
-      'refreshed modules, created:', created,
-      'deleted:', deleted);
+      `created: ${created.length} (${created.join(', ')})`,
+      `deleted: ${deleted.length} (${deleted.join(', ')})`);
 
+    const toDelete = deleted.map(patch => repo.getModule(patch.name));
+    for (let m of toDelete) {
+      try {
+        await datastore.get().delete(m);
+      } catch (e) {
+        // not much we can really do at this point...
+        console.warn('failed to delete module: ', m, e);
+      }
+    }
+
+    repo.applyPatches(mdiff);
     await repo.store();
 
     // changes in module dependencies don't result in any updates, but we still

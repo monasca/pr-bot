@@ -116,33 +116,34 @@ export default class Repository {
     throw new RepositoryError('loadModules() not implemented');
   }
 
-  diffModules(): Promise<ModulePatch[]> {
+  async diffModules(): Promise<ModulePatch[]> {
     // we don't use jsonpatch here because we only care about unordered
     // create/delete of modules
-    return this.loadModules().then(modules => {
-      const remaining = new Set(modules.map(m => m.name));
-      const patches: ModulePatch[] = [];
+    const modules = await this.loadModules();
 
-      for (let mod of modules) {
-        remaining.delete(mod.name);
+    // previously-known modules that have not yet been seen in the new list
+    const remaining = new Set(this.modules.map(m => m.name));
+    const patches: ModulePatch[] = [];
 
-        let current = this.modules.find(m => m.name === mod.name);
-        if (!current) {
-          patches.push({
-            type: 'create',
-            name: mod.name,
-            moduleType: mod.type,
-            modulePath: mod.path || null
-          });
-        }
+    for (let mod of modules) {
+      remaining.delete(mod.name);
+
+      let current = this.getModule(mod.name);
+      if (!current) {
+        patches.push({
+          type: 'create',
+          name: mod.name,
+          moduleType: mod.type,
+          modulePath: mod.path || null
+        });
       }
+    }
 
-      for (let name of remaining) {
-        patches.push({ type: 'delete', name });
-      }
+    for (let name of remaining) {
+      patches.push({ type: 'delete', name });
+    }
 
-      return patches;
-    });
+    return patches;
   }
 
   applyPatches(patches: ModulePatch[]) {
