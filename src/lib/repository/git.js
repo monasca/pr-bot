@@ -320,6 +320,18 @@ export default class GitRepository extends Repository {
         });
   }
 
+  async unshallow(): Promise<void> {
+    const localPath = this.localPath;
+    if (!localPath) {
+      throw new GitError('repository not initialized', 'invalid localPath');
+    }
+
+    const remote = this._auth(this.remote);
+    await exec(`git fetch --unshallow ${remote}`, {
+      cwd: localPath
+    });
+  }
+
   clean(): Promise<void> {
     if (!this.localPath) {
       return Promise.resolve();

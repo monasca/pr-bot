@@ -107,6 +107,7 @@ export default class HelmValuesMutationPlugin extends MutationPlugin<GitReposito
     const commitMessage = renderCommitMessage(update);
     // TODO: use renderPullRequest as well
 
+    await repository.unshallow();
     await repository.branch(formatBranch(update));
     await repository.add(valuesPath);
     await repository.commit(commitMessage);

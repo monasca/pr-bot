@@ -87,6 +87,7 @@ export default class HelmRequirementsMutationPlugin
     await repository.getOrCreateFork();
 
     const commitMessage = renderCommitMessage(update);
+    await repository.unshallow();
     await repository.branch(formatBranch(update));
     await repository.add(reqsPath);
     await repository.commit(commitMessage);

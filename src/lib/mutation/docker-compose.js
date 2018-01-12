@@ -148,6 +148,7 @@ export default class DockerComposeMutationPlugin
     await repository.getOrCreateFork();
 
     const commitMessage = renderCommitMessage(update);
+    await repository.unshallow();
     await repository.branch(formatBranch(update));
     await repository.add(modified);
     await repository.commit(commitMessage);

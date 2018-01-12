@@ -81,7 +81,8 @@ export default class LandscaperMutationPlugin extends MutationPlugin<GitReposito
         const commitMessage = renderCommitMessage(update);
         // TODO: use renderPullRequest as well
 
-        return repository.branch(formatBranch(update))
+        return repository.unshallow()
+            .then(() => repository.branch(formatBranch(update)))
             .then(() => repository.add(modulePath))
             .then(() => repository.commit(commitMessage))
             .then(() => repository.push())
