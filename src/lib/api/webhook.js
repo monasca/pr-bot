@@ -196,7 +196,7 @@ dispatcher.on('pull_request', async (req: $Request): Promise<any> => {
   // TODO: maybe self-close PRs if another user posts a PR that manually
   // updates?
 
-  if (req.body.action !== 'opened' || req.body.action !== 'synchronize') {
+  if (req.body.action !== 'opened' && req.body.action !== 'synchronize') {
     // TODO: handle close events (delete our tracked PR)
     return;
   }
@@ -210,7 +210,6 @@ dispatcher.on('pull_request', async (req: $Request): Promise<any> => {
   }
 
   const number: number = req.body.pull_request.number;
-
   const ds = datastore.get();
 
   let pr: PullRequest;
