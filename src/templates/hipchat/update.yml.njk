@@ -1,11 +1,9 @@
 {% set update = result.update %}
-{% set src = update.srcRepository %}
-{% set dest = update.destRepository %}
 
 {% set text %}
-An update to {{ src.name }}/{{ update.srcModule }} triggered an automatic update
-to {{ dest.name }}/{{ update.destModule }} (version {{ update.fromVersion }} -> 
-{{ update.toVersion }}).
+An update to {{ update.srcRepository }}/{{ update.srcModule }} triggered an
+automatic update to {{ update.destRepository }}/{{ update.destModule }} (version
+{{ update.fromVersion }} -> {{ update.toVersion }}).
 {% endset %}
 
 color: green
@@ -28,12 +26,10 @@ card:
   attributes:
     - label: Module
       value:
-        label: "{{ dest.name }}/{{ update.destModule }}"
-        url: "{{ dest.remote }}"
+        label: "{{ update.destRepository }}/{{ update.destModule }}"
     - label: Dependency
       value:
-        label: "{{ src.name }}/{{ update.srcModule }}"
-        url: "{{ src.remote }}"
+        label: "{{ update.srcRepository }}/{{ update.srcModule }}"
     - label: Version
       value:
         label: "{{ update.toVersion }}"

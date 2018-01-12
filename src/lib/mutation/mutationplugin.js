@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -25,9 +25,39 @@ export type MutationPluginType = {
   destModule: string
 };
 
+export type GitHubBranchRef = {
+  label: string,
+  ref: string,
+  sha: string,
+  user: any,
+  repo: any
+}
+
+export type GitHubPullRequest = {
+  id: number,
+  url: string,
+  html_url: string,
+  diff_url: string,
+  number: number,
+  state: string,
+  title: string,
+  body: string,
+  assignee: ?{ [string]: any },
+  milestone: ?{ [string]: any },
+  locked: boolean,
+  created_at: string,
+  updated_at: string,
+  closed_at: ?string,
+  merged_at: ?string,
+  user: { [string]: any },
+  base: GitHubBranchRef,
+  head: GitHubBranchRef,
+  // lots more properties not included here
+}
+
 export type MutationResult<T: Repository> = {
   update: Update<T>,
-  pr: mixed,
+  pr: GitHubPullRequest,
   id: string,
   link: string,
   title: string

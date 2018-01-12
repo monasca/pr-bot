@@ -24,6 +24,7 @@ import Repository from '../repository/repository';
 import Update from '../update';
 
 import type { TaskOptions } from './task';
+import type { MutationResult } from '../mutation/mutationplugin';
 
 type UpdateApplyData = {
   update: Update<any>,
@@ -80,14 +81,24 @@ export default class UpdateApplyTask extends Task {
       dest.type(), srcMod.type, destMod.type,
       'mutation plugin: ', mut.constructor.name);
 
-    const result = await mut.apply(update);
+    const result: MutationResult<any> = await mut.apply(update);
+    const sanitizedResult = {
+      id: result.pr.head.sha,
+      link: result.pr.html_url,
+      title: result.pr.title,
+      update: result.update.dump(),
+      pr: {
+        number: result.pr.number,
+        html_url: result.pr.html_url
+      }
+    };
 
     if (dest.room) {
       await queue.get().enqueue(new NotifyTask({
         data: {
           room: dest.room,
           template: 'update',
-          env: { result }
+          env: { result: sanitizedResult }
         }
       }));
     }

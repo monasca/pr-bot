@@ -88,7 +88,7 @@ export type RenderedPullRequest = {
   body: string
 };
 
-export function renderPullRequest(update: Update<any>) {
+export function renderPullRequest(update: Update<any>): RenderedPullRequest {
   const commit = parseCommitMessage(renderCommitMessage(update));
   const text = render('pr/default.md.njk', {
     commit, update, up: update
