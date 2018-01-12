@@ -65,6 +65,13 @@ dispatcher.on('listDependents', async (req: $Request) => {
   return modules.filter(m => m.dependsOn(repo, mod));
 });
 
+dispatcher.on('getModule', async (req: $Request) => {
+  const id = req.body.id;
+  const ds = datastore.get();
+
+  return ds.get(Module, id);
+});
+
 dispatcher.on('addRepository', async (req: $Request) => {
   const { name, type, remote, parent, room } = req.body;
   const task = new AddRepositoryTask({
@@ -116,6 +123,33 @@ dispatcher.on('getTask', async (req: $Request) => {
   const task = await ds.get(Task, taskId);
 
   return task;
+});
+
+dispatcher.on('retryTask', async (req: $Request) => {
+  const taskId = req.body.id;
+  const ds = datastore.get();
+  const task = await ds.get(Task, taskId);
+  if (!task) {
+    throw new HttpError(`task not found with id=${taskId}`, 404);
+  }
+
+  if (task.retries <= 0) {
+    task.retries = 1;
+  }
+
+  const clone = task.retry();
+  if (!clone) {
+    throw new HttpError(`could not retry task with id=${taskId}`, 500);
+  }
+
+  await clone.store();
+  await queue.get().enqueue(clone);
+
+  return {
+    message: 'task has been rescheduled',
+    previousId: taskId,
+    taskId: clone.id()
+  };
 });
 
 function verifyToken(req: $Request): void {
