@@ -22,7 +22,7 @@ import fs from 'fs-extra';
 import MutationPlugin, { MutationException } from './mutationplugin';
 import { parseDockerTag, dockerTagToRemote } from '../docker-util';
 import { findDockerDependencies } from '../helm-util';
-import { renderCommitMessage } from '../template-util';
+import { renderCommitMessage, renderPullRequest } from '../template-util';
 
 import type GitRepository from '../repository/git';
 import type Update from '../update';
@@ -113,7 +113,8 @@ export default class HelmValuesMutationPlugin extends MutationPlugin<GitReposito
     await repository.commit(commitMessage);
     await repository.push();
 
-    const response = await repository.createPullRequest(commitMessage);
+    const { title, body } = renderPullRequest(update);
+    const response = await repository.createPullRequest(title, body);
     const pr = response.data;
     return {
       update, pr,

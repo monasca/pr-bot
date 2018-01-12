@@ -18,7 +18,7 @@ import YAWN from 'yawn-yaml/cjs';
 import fs from 'fs-extra';
 
 import MutationPlugin, { MutationException } from './mutationplugin';
-import { renderCommitMessage } from '../template-util';
+import { renderCommitMessage, renderPullRequest } from '../template-util';
 
 import type Update from '../update';
 import type GitRepository from '../repository/git';
@@ -79,14 +79,14 @@ export default class LandscaperMutationPlugin extends MutationPlugin<GitReposito
         return repository.getOrCreateFork();
       }).then(() => {
         const commitMessage = renderCommitMessage(update);
-        // TODO: use renderPullRequest as well
+        const { title, body } = renderPullRequest(update);
 
         return repository.unshallow()
             .then(() => repository.branch(formatBranch(update)))
             .then(() => repository.add(modulePath))
             .then(() => repository.commit(commitMessage))
             .then(() => repository.push())
-            .then(() => repository.createPullRequest(commitMessage));
+            .then(() => repository.createPullRequest(title, body));
       });
     }).then(response => {
       const pr = response.data;
