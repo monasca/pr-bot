@@ -6,12 +6,11 @@ RUN yarn config set https-proxy ${https_proxy}
 
 COPY package.json .babelrc .eslintrc.yaml .eslintignore .flowconfig /bot/
 COPY src /bot/src
-RUN cd /bot && yarn
+RUN cd /bot && yarn && cp -r /bot/src/templates /bot/build/templates
 
 FROM node:9-alpine
 
 COPY package.json /bot/
-COPY src/templates /bot/templates
 COPY --from=builder /bot/build /bot/build
 
 ARG PRUNE_URL=https://github.com/tj/node-prune/releases/download/v1.0.1/node-prune_1.0.1_linux_amd64.tar.gz
