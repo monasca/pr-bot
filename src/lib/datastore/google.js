@@ -52,9 +52,20 @@ export default class GoogleDatastore extends DatastoreBackend {
   }
 
   _deserialize<T>(type: Class<T>, entity: { [string]: any }): T {
+    const key = entity[this.datastore.KEY];
+    let id;
+    if (key.name) {
+      id = key.name;
+    } else if (key.id) {
+      id = parseInt(key.id);
+    } else {
+      console.error('invalid key type: ', key);
+      throw new DatastoreError('cannot determine key type');
+    }
+
     const data = {
       ...entity,
-      _meta: { id: entity[this.datastore.KEY].name }
+      _meta: { id }
     };
 
     // $FlowFixMe: flow can't handle static interface properties
