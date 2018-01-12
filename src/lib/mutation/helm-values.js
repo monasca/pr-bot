@@ -87,7 +87,7 @@ export default class HelmValuesMutationPlugin extends MutationPlugin<GitReposito
 
     const modulePath = await repository.modulePath(update.destModule);
     const valuesPath = path.join(modulePath, 'values.yaml');
-    const content = fs.readFile(valuesPath, 'utf-8');
+    const content = await fs.readFile(valuesPath, 'utf-8');
 
     const parsed = new YAWN(content);
 
