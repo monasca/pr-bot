@@ -8,16 +8,19 @@ variables exposed:
   - up: the settled Update instance
 #}
 {%- set ctitle -%}
-auto-update: {{ up.destModule }}/{{ up.srcModule }} to {{ up.toVersion }}
+auto-update: {{ up.srcModule }} -> {{ up.toVersion }}
 {%- endset %}
 {%- set message -%}
 Dependency `{{ up.srcModule }}` from {{ up.srcRepository.type() }} repository
 {{ up.srcRepository.name }} was updated to version `{{ up.toVersion }}`.
 {%- endset %}
-{{ ctitle | truncate(72) }}
+{{ ctitle | truncate(70) }}
 
-{{ message | wrap(length=80) }}
+{{ message | wrap(length=70) }}
 
 Source-Repository-Type: {{ up.srcRepository.type() }}
 Source-Repository: {{ up.srcRepository.remote }}
+Source-Module: {{ up.srcModule }}
+Source-Module-Type: {{ up.srcRepository.getModule(up.srcModule).type }}
 Destination-Module: {{ up.destModule }}
+Destination-Module-Type: {{ up.destRepository.getModule(up.destModule).type }}
