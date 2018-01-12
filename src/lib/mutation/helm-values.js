@@ -40,6 +40,7 @@ function updateValues(
     throw new MutationException('update was not fully loaded');
   }
 
+  let updated = false;
   for (let dep of findDockerDependencies(values)) {
     const fullTag = `${dep.value.repository}:${dep.value.tag}`;
     const parsed = parseDockerTag(fullTag);
@@ -54,10 +55,13 @@ function updateValues(
     }
 
     dep.value.tag = update.toVersion;
+    updated = true;
   }
 
-  throw new MutationException(
-    `No match found for ${src.remote}:${update.srcModule} in values`);
+  if (!updated) {
+    throw new MutationException(
+      `No match found for ${src.remote}:${update.srcModule} in values`);
+  }
 }
 
 function formatBranch(up: Update<GitRepository>): string {
