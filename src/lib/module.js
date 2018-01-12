@@ -15,6 +15,7 @@
 // @flow
 
 import jsonpatch from 'fast-json-patch';
+import uuid from 'uuid/v4';
 
 import * as check from './check';
 import { ExtendableError } from './util';
@@ -60,6 +61,7 @@ export type ModuleUpdate = {
 };
 
 export default class Module implements Storable<ModuleOptions, Module> {
+  _id: string;
   repository: string;
   name: string; 
   type: string;
@@ -82,6 +84,12 @@ export default class Module implements Storable<ModuleOptions, Module> {
     this.path = options.path || null;
     
     this._meta = options._meta || {};
+    if (this._meta.id) {
+      const idString: string = (this._meta.id: any);
+      this._id = idString;
+    } else {
+      this._id = uuid();
+    }
   }
 
   matches(name: string): boolean {
@@ -174,7 +182,7 @@ export default class Module implements Storable<ModuleOptions, Module> {
   }
 
   id(): string | null {
-    return null;
+    return this._id;
   }
 
   dump(): ModuleOptions {
