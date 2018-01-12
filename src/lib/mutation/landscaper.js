@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -56,46 +56,43 @@ export default class LandscaperMutationPlugin extends MutationPlugin<GitReposito
     };
   }
 
-  apply(update: Update<GitRepository>): Promise<MutationResult<GitRepository>> {
+  async apply(update: Update<GitRepository>): Promise<MutationResult<GitRepository>> {
     if (!update.destRepository) {
       throw new MutationException('dest repository is not ready');
     }
 
     const repository: GitRepository = update.destRepository;
     const realName = `${update.destModule}.yaml`;
+    const modulePath = await repository.modulePath(realName);
     
-    return repository.modulePath(realName).then(modulePath => {
-      return fs.readFile(modulePath, 'utf-8').then(content => {
-        const parsed = new YAWN(content);
+    const content = await fs.readFile(modulePath, 'utf-8');
+    const parsed = new YAWN(content);
 
-        // copy the root object - yawn uses a setter on .json and won't detect
-        // changes to children (or self assignment)
-        const obj = Object.assign({}, parsed.json);
-        updateLandscaper(repository, update, obj);
+    // copy the root object - yawn uses a setter on .json and won't detect
+    // changes to children (or self assignment)
+    const obj = Object.assign({}, parsed.json);
+    updateLandscaper(repository, update, obj);
 
-        parsed.json = obj;
-        return fs.writeFile(modulePath, parsed.yaml, 'utf-8');
-      }).then(() => {
-        return repository.getOrCreateFork();
-      }).then(() => {
-        const commitMessage = renderCommitMessage(update);
-        const { title, body } = renderPullRequest(update);
+    parsed.json = obj;
+    await fs.writeFile(modulePath, parsed.yaml, 'utf-8');
 
-        return repository.unshallow()
-            .then(() => repository.branch(formatBranch(update)))
-            .then(() => repository.add(modulePath))
-            .then(() => repository.commit(commitMessage))
-            .then(() => repository.push())
-            .then(() => repository.createPullRequest(title, body));
-      });
-    }).then(response => {
-      const pr = response.data;
-      return {
-        update, pr,
-        id: pr.head.sha,
-        link: pr.html_url,
-        title: pr.title
-      };
-    });
+    await repository.getOrCreateFork();
+
+    const commitMessage = renderCommitMessage(update);
+    await repository.unshallow();
+    await repository.branch(formatBranch(update));
+    await repository.add(modulePath);
+    await repository.commit(commitMessage);
+    await repository.push();
+
+    const { title, body } = renderPullRequest(update);
+    const response = await repository.createPullRequest(title, body);
+    const pr = response.data;
+    return {
+      update, pr,
+      id: pr.head.sha,
+      link: pr.html_url,
+      title: pr.title
+    };
   }
 }
