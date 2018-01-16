@@ -15,7 +15,6 @@
 // @flow
 
 import child_process from 'child_process';
-import os from 'os';
 import url from 'url';
 
 // see also: http://stackoverflow.com/a/32749533
@@ -100,17 +99,6 @@ export function spawn(
   });
 }
 
-type ExecLogEntry = {
-  code: ?number,
-  command: string,
-  usedStart: number,
-  usedEnd: ?number,
-  usedDiff: ?number,
-  time: ?number
-};
-
-const execLogs: ExecLogEntry[] = [];
-
 export function exec(
       command: string,
       options: SubprocessOptions = {}): Promise<SubprocessReturnValue> {
@@ -118,16 +106,6 @@ export function exec(
   options.stdio = options.stdio || 'inherit';
 
   return new Promise((resolve, reject) => {
-    const timeStart = +(new Date());
-    const usedStart = (os.totalmem() - os.freemem()) / (1024 * 1024);
-    const log = {
-      usedStart,
-      command: command.split(' ').slice(0, 2).join(' '),
-      code: null, usedEnd: null, usedDiff: null, time: null
-    };
-
-    execLogs.push(log);
-
     // $FlowFixMe: flow's built-in typedef is bad
     child_process.exec(command, options, (error, stdout: string, stderr: string) => {
       let code: number;
@@ -138,19 +116,6 @@ export function exec(
       } else {
         code = (error.code: number);
       }
-
-      // debugging utils for GCF child_process memory leak
-      // see also: https://issuetracker.google.com/issues/62723252
-      const usedEnd = (os.totalmem() - os.freemem()) / (1024 * 1024);
-
-      log.code = code;
-      log.usedEnd = usedEnd;
-      log.usedDiff = usedEnd - usedStart;
-      log.time = (+(new Date()) - timeStart) / 1000;
-
-      console.log(
-          `MEMORY: exec returned ${code} after ${log.time}s`,
-          `and consumed ${log.usedDiff} MiB`);
 
       if (code === 0) {
         resolve({ code, stdout, stderr });
@@ -166,15 +131,6 @@ export function pipe(
       command: string,
       options: SubprocessOptions = {}): Promise<SubprocessReturnValue> {
   return new Promise((resolve, reject) => {
-    const timeStart = +(new Date());
-    const usedStart = (os.totalmem() - os.freemem()) / (1024 * 1024);
-    const log = {
-      usedStart,
-      command: command.split(' ').slice(0, 2).join(' '),
-      code: null, usedEnd: null, usedDiff: null, time: null
-    };
-    execLogs.push(log);
-
     // $FlowFixMe: flow's built-in typedef is bad
     const c = child_process.exec(command, options, (error, stdout: string, stderr: string) => {
       let code;
@@ -186,17 +142,6 @@ export function pipe(
         code = error.code;
       }
 
-      const usedEnd = (os.totalmem() - os.freemem()) / (1024 * 1024);
-
-      log.code = code;
-      log.usedEnd = usedEnd;
-      log.usedDiff = usedEnd - usedStart;
-      log.time = (+(new Date()) - timeStart) / 1000;
-
-      console.log(
-          `MEMORY: pipe returned ${code} after ${log.time}s`,
-          `and consumed ${log.usedDiff} MiB`);
-
       if (code === 0) {
         resolve({ code, stdout, stderr });
       } else {
@@ -207,15 +152,6 @@ export function pipe(
     c.stdin.write(input);
     c.stdin.end();
   });
-}
-
-export function dumpMemoryLeakInfo() {
-  const sum = execLogs.reduce((acc, val) => acc + val.usedDiff, 0);
-  const mean = sum / execLogs.length;
-  console.log(`${execLogs.length} processes, avg memory lost: ${mean} MiB`);
-  for (let log of execLogs) {
-    console.log(log);
-  }
 }
 
 export type SafeParsedURL = {
