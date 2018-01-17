@@ -70,4 +70,16 @@ export default class PullRequest implements Storable<PROptions, PullRequest> {
 
     return ds.store(this);
   }
+
+  static async getByCommit(
+      commit: string,
+      ds: DatastoreBackend | null = null): Promise<PullRequest> {
+    if (!ds) {
+      ds = require('./datastore').get();
+    }
+
+    return ds.first(PullRequest, [
+      { f: 'commits', op: 'in', val: commit }
+    ]);
+  }
 }

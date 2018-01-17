@@ -104,6 +104,14 @@ dispatcher.on('status', async (req: $Request): Promise<any> => {
       500);
   }
 
+  let pr;
+  try {
+    pr = (await PullRequest.getByCommit(req.body.sha)).dump();
+  } catch (e) {
+    console.warn('could not get pr for commit: ', req.body.sha, e);
+    pr = null;
+  }
+
   if (req.body.state === 'pending') {
     // don't care about pending (~= CI ack)
     return Promise.resolve();
@@ -116,7 +124,9 @@ dispatcher.on('status', async (req: $Request): Promise<any> => {
     // https://github.com/monasca/pr-bot/issues/24
 
     // TODO include link to pull request in status env
-    await safeNotify('status', { payload: req.body }, parent);
+    await safeNotify('status', {
+      payload: req.body, pr
+    }, parent);
 
     const master = req.body.branches.find(b => b.name === 'master');
     if (master) {
@@ -139,7 +149,9 @@ dispatcher.on('status', async (req: $Request): Promise<any> => {
     // failure or error... we'll treat both the same
     // no updates to do on our end, just notify about the failure
     // https://github.com/monasca/pr-bot/issues/24
-    await safeNotify('status', { payload: req.body }, parent);
+    await safeNotify('status', {
+      payload: req.body, pr
+    }, parent);
   }
 
   return {

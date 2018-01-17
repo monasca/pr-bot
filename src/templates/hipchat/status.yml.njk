@@ -45,7 +45,12 @@ card:
       value:
         label: "{{ payload.branches | join(', ', 'name') }}"
 {% endif %}
-{% if prMatch %}
+{% if pr %}
+    - label: PR
+      value:
+        label: "#{{ pr.number }}"
+        url: "{{ payload.repository.html_url }}/pull/{{ pr.number }}"
+{% elif prMatch %}
     - label: PR
       value:
         label: "#{{ prMatch[1] }}"
