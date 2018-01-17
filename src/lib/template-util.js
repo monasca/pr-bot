@@ -28,7 +28,8 @@ export type TemplateEnvironment = {
 
 const nj = nunjucks.configure(TEMPLATE_DIRECTORY, {
   lstripBlocks: true,
-  trimBlocks: true
+  trimBlocks: true,
+  autoescape: false
 });
 
 function wrap(str: string, kwargs: { length: number }) {

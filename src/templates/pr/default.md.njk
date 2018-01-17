@@ -9,6 +9,6 @@ variables exposed:
             exposes fields: `title`, `body`, `raw`
   - up: the settled Update instance
 #}
-{{ commit.title }}
+{{ commit.title | safe }}
 
-{{ commit.body }}
+{{ commit.body | safe }}
