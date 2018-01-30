@@ -1,4 +1,4 @@
-// (C) Copyright 2017 Hewlett Packard Enterprise Development LP
+// (C) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -30,6 +30,13 @@ export type Filter = {
   val: mixed
 };
 
+export type QueryOptions = {
+  sort: string,
+  direction?: 'asc' | 'desc',
+  offset?: number,
+  limit?: number
+};
+
 export interface Storable<T, U> {
   id(): string | null;
   dump(): T;
@@ -47,18 +54,20 @@ export default class DatastoreBackend {
 
   }
 
-  // eslint-disable-next-line no-unused-vars
   init() {
     throw new DatastoreError('init not implemented');
   }
 
-  // eslint-disable-next-line no-unused-vars
-  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
+  list<T>(
+      type: Class<T>, filters: Filter[] = [],
+      _options: ?QueryOptions = null): Promise<T[]> {
     throw new DatastoreError('list not implemented');
   }
 
-  first<T>(type: Class<T>, filters: Filter[] = []): Promise<T> {
-    return this.list(type, filters).then(ents => {
+  first<T>(
+      type: Class<T>, filters: Filter[] = [],
+      _options: ?QueryOptions = null): Promise<T> {
+    return this.list(type, filters, _options).then(ents => {
       if (ents.length === 0) {
         throw new DatastoreError('no matching entities found');
       }
@@ -67,18 +76,15 @@ export default class DatastoreBackend {
     });
   }
 
-  // eslint-disable-next-line no-unused-vars
-  get<T>(type: Class<T>, key: mixed): Promise<T> {
+  get<T>(_type: Class<T>, _key: mixed): Promise<T> {
     throw new DatastoreError('get not implemented');
   }
 
-  // eslint-disable-next-line no-unused-vars
-  store<T, U>(object: Storable<T, U>, settle: boolean = true): Promise<any> {
+  store<T, U>(object: Storable<T, U>, _settle: boolean = true): Promise<any> {
     throw new DatastoreError('store not implemented');
   }
 
-  // eslint-disable-next-line no-unused-vars
-  delete<T, U>(object: Storable<T, U>): Promise<any> {
+  delete<T, U>(_object: Storable<T, U>): Promise<any> {
     throw new DatastoreError('delete not implemented');
   }
 }

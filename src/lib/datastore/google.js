@@ -20,7 +20,7 @@ import * as config from '../config';
 
 import DatastoreBackend, { DatastoreError } from './backend';
 
-import type { Filter, Storable } from './backend';
+import type { Filter, Storable, QueryOptions } from './backend';
 
 const OPERATORS = {
   '=': '=',
@@ -77,12 +77,31 @@ export default class GoogleDatastore extends DatastoreBackend {
     }
   }
 
-  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
+  list<T>(
+      type: Class<T>, filters: Filter[] = [],
+      options: ?QueryOptions = null): Promise<T[]> {
     // $FlowFixMe: this class gets insane to type properly
     let query = this.datastore.createQuery(type.name);
     for (let filter of filters) {
       const op = OPERATORS[filter.op];
       query = query.filter(filter.f, op, filter.val);
+    }
+
+    if (options) {
+      if (options.sort) {
+        let direction = options.direction || 'asc';
+        query = query.order(options.sort, {
+          descending: (direction === 'desc')
+        });
+      }
+      
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      if (options.offset) {
+        query = query.offset(options.offset);
+      }
     }
 
     return this.datastore

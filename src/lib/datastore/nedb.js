@@ -24,7 +24,7 @@ import * as config from '../config';
 
 import DatastoreBackend, { DatastoreError } from './backend';
 
-import type { Filter, Storable } from './backend';
+import type { Filter, Storable, QueryOptions } from './backend';
 
 const OPERATORS = {
   '=': value => value,
@@ -104,14 +104,38 @@ export default class NeDBDatastore extends DatastoreBackend {
     }
   }
 
-  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
+  list<T>(
+      type: Class<T>, filters: Filter[] = [],
+      options: ?QueryOptions = null): Promise<T[]> {
     const query = {};
     for (let filter of filters) {
       query[filter.f] = OPERATORS[filter.op](filter.val);
     }
 
+    let func = this._db(type).find(query);
+    if (options) {
+      if (options.sort) {
+        let direction;
+        if (options.direction === 'asc') {
+          direction = 1;
+        } else {
+          direction = -1;
+        }
+  
+        func = func.sort({ [options.sort]: direction });
+      }
+
+      if (options.limit) {
+        func = func.limit(options.limit);
+      }
+
+      if (options.offset) {
+        func = func.skip(options.offset);
+      }
+    }
+
     return new Promise((resolve, reject) => {
-      this._db(type).find(query, (err, docs) => {
+      func.exec( (err, docs) => {
         if (err) {
           reject(err);
           return;

@@ -26,7 +26,7 @@ import Module from '../module';
 import Repository from '../repository/repository';
 import Update from '../update';
 
-import type { Filter, Storable } from './backend';
+import type { Filter, Storable, QueryOptions } from './backend';
 
 const TYPES = [ Module, Repository, Update ];
 
@@ -80,7 +80,9 @@ export default class MemoryDatastore extends DatastoreBackend {
     }
   }
 
-  list<T>(type: Class<T>, filters: Filter[] = []): Promise<T[]> {
+  list<T>(
+      type: Class<T>, filters: Filter[] = [],
+      options: ?QueryOptions = null): Promise<T[]> {
     // $FlowFixMe: static interface methods
     const kind: string = type.kind();
     const typeMap = this.datastore.get(kind);
@@ -102,7 +104,7 @@ export default class MemoryDatastore extends DatastoreBackend {
       });
     }
 
-    const objects: T[] = ids.map(id => {
+    let objects: T[] = ids.map(id => {
       const ent = typeMap.get(id);
       if (!ent) {
         throw new DatastoreError('ent is impossibly undefined');
@@ -110,6 +112,41 @@ export default class MemoryDatastore extends DatastoreBackend {
 
       return this._deserialize(type, id, ent);
     });
+
+    if (options) {
+      if (options.sort) {
+        let direction;
+        if (options.direction === 'asc') {
+          direction = -1;
+        } else {
+          direction = 1;
+        }
+
+        objects.sort((a, b) => {
+          // $FlowFixMe: obviously unsafe
+          const fa = a[options.sort];
+
+          // $FlowFixMe: obviously unsafe
+          const fb = b[options.sort];
+
+          if (fa === fb) {
+            return 0;
+          } else if (fa < fb) {
+            return direction;
+          } else {
+            return -direction;
+          }
+        });
+      }
+
+      if (options.offset) {
+        objects = objects.slice(options.offset);
+      }
+
+      if (options.limit) {
+        objects = objects.slice(0, options.limit);
+      }
+    }
 
     return Promise.resolve(objects);
   }
