@@ -116,6 +116,18 @@ dispatcher.on('softUpdateRepository', async (req: $Request) => {
   };
 });
 
+dispatcher.on('getTasks', async (req: $Request) => {
+  const limit = req.body.limit || 15;
+  const offset = req.body.offset || 0;
+  const sort = req.body.sort || 'createdAt';
+
+  const ds = datastore.get();
+  return ds.list(Task, [], {
+    sort, offset, limit,
+    direction: 'desc'
+  });
+});
+
 dispatcher.on('getTask', async (req: $Request) => {
   const taskId = req.body.id;
 
@@ -177,10 +189,18 @@ function sanitizeIfNecessary(object: any): any {
   }
 }
 
-export async function handle(req: $Request, _res: $Response): Promise<any> {
+export async function handle(req: $Request, res: $Response): Promise<any> {
   // GCF doesn't seem to allow JSON bodies for GET, and doesn't give us
   // PATH_INFO ... so we'll have to handle everything in POST
   // so maybe it's less REST and more "httpie friendly", but whatever
+
+  res.set('Access-Control-Allow-Origin', "*");
+  res.set('Access-Control-Allow-Methods', 'GET, POST');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return;
+  }
 
   if (req.get('content-type') !== 'application/json') {
     throw new HttpError('content-type must be application/json', 406);
